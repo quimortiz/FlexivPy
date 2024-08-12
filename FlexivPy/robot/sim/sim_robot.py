@@ -1,5 +1,3 @@
-
-
 # create a simulation robot using mujoco
 
 
@@ -10,7 +8,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 import os
 
-ASSETS_PATH  = "FlexivPy/assets/"
+ASSETS_PATH = "FlexivPy/assets/"
 
 
 class FlexivSim:
@@ -18,14 +16,14 @@ class FlexivSim:
 
         if xml_path is None:
             self.model = mujoco.MjModel.from_xml_path(
-                os.path.join(ASSETS_PATH, "mjmodel.xml" )
+                os.path.join(ASSETS_PATH, "mjmodel.xml")
             )
         else:
             self.model = mujoco.MjModel.from_xml_path(xml_path)
         self.simulated = True
         self.data = mujoco.MjData(self.model)
         self.dt = dt
-        _render_dt = 1. / 30.
+        _render_dt = 1.0 / 30.0
         self.render_ds_ratio = max(1, _render_dt // dt)
 
         if render:
@@ -57,7 +55,11 @@ class FlexivSim:
 
     def set_u(self):
         cmd = self.cmd
-        tau = cmd['tau_ff'] + cmd['kp'] * (cmd['q'] - self.data.qpos) + cmd['kv'] * (cmd['dq'] - self.data.qvel)
+        tau = (
+            cmd["tau_ff"]
+            + cmd["kp"] * (cmd["q"] - self.data.qpos)
+            + cmd["kv"] * (cmd["dq"] - self.data.qvel)
+        )
 
         self.data.ctrl = tau
 
@@ -68,12 +70,10 @@ class FlexivSim:
         self.cmd = cmd
 
     def getJointStates(self):
-        return {"q": self.data.qpos,
-                "dq": self.data.qvel }
+        return {"q": self.data.qpos, "dq": self.data.qvel}
 
     def is_ready(self):
         return self.getJointStates() is not None
-
 
     def getPose(self):
         return self.data.qpos[:3], self.data.qpos[3:7]

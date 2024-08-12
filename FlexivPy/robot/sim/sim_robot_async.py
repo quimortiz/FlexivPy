@@ -44,36 +44,37 @@ import time
 from FlexivPy.robot.dds.flexiv_messages import FlexivCmd, FlexivState
 
 
-ASSETS_PATH  = "assets/"
+ASSETS_PATH = "assets/"
+
 
 class FlexivSim_dds_server:
 
-    def __init__(self, dt, render , max_time):
+    def __init__(self, dt, render, max_time):
 
         self.render = render
         self.dt = dt
         self.max_time = max_time
         self.domain_participant = DomainParticipant()
-        self.topic_state = Topic(self.domain_participant, 'FlexivState', FlexivState)
+        self.topic_state = Topic(self.domain_participant, "FlexivState", FlexivState)
         self.publisher = Publisher(self.domain_participant)
         self.writer = DataWriter(self.publisher, self.topic_state)
 
         # I also have to create a subscriber to receive the data
 
-        self.topic_cmd = Topic(self.domain_participant, 'FlexivCmd', FlexivCmd)
+        self.topic_cmd = Topic(self.domain_participant, "FlexivCmd", FlexivCmd)
         self.subscriber = Subscriber(self.domain_participant)
         self.reader = DataReader(self.subscriber, self.topic_cmd)
 
         # create a simulated robot
-        self.robot = sim_robot.FlexivSim(render=self.render, dt = self.dt)
-        self.stop_dt = .01 # [s] if i don't receive a cmd in this time, stop the robot
+        self.robot = sim_robot.FlexivSim(render=self.render, dt=self.dt)
+        self.stop_dt = 0.01  # [s] if i don't receive a cmd in this time, stop the robot
 
-        self.default_cmd = { 
-            'tau_ff': np.zeros(7),
-            'q': np.zeros(7),
-            'dq': np.zeros(7),
-            'kp': np.zeros(7),
-            'kv':  10.*np.ones(7)
+        self.default_cmd = {
+            "tau_ff": np.zeros(7),
+            "q": np.zeros(7),
+            "dq": np.zeros(7),
+            "kp": np.zeros(7),
+            "kv": 10.0 * np.ones(7),
         }
 
     def run(self):
@@ -94,7 +95,7 @@ class FlexivSim_dds_server:
                 time_last_cmd = time.time()
                 self.robot.set_cmd(self.default_cmd)
                 if not warning_send:
-                    print('no cmd recieved in time! -- using default cmd')
+                    print("no cmd recieved in time! -- using default cmd")
                     warning_send = True
                     good_satus_send = False
 
@@ -121,53 +122,53 @@ class FlexivSim_dds_server:
             if len(samples):
                 last_sample = samples[-1]
 
-
             if last_sample and type(last_sample) == FlexivCmd:
                 cmd = last_sample
                 time_last_cmd = time.time()
                 warning_send = False
                 if not good_satus_send:
-                    print('cmd received')
+                    print("cmd received")
                     good_satus_send = True
-                self.robot.set_cmd( {
-                    'tau_ff': cmd.tau_ff,
-                    'q': cmd.q,
-                    'dq': cmd.dq,
-                    'kp': cmd.kp,
-                    'kv': cmd.kv,
-                })
+                self.robot.set_cmd(
+                    {
+                        "tau_ff": cmd.tau_ff,
+                        "q": cmd.q,
+                        "dq": cmd.dq,
+                        "kp": cmd.kp,
+                        "kv": cmd.kv,
+                    }
+                )
 
             self.robot.step()
 
             state = self.robot.getJointStates()
-            msg_out = FlexivState(q=state['q'], dq=state['dq'], tau=np.zeros(7), 
-                                  timestamp="")
+            msg_out = FlexivState(
+                q=state["q"], dq=state["dq"], tau=np.zeros(7), timestamp=""
+            )
             self.writer.write(msg_out)
 
             toc = time.time()
             elapsed_time = toc - tic
             history_dt.append(elapsed_time)
             if elapsed_time > self.dt:
-                print(f'warning! elapsed time:  {elapsed_time} is greater than dt: {self.dt}')
-        
+                print(
+                    f"warning! elapsed time:  {elapsed_time} is greater than dt: {self.dt}"
+                )
+
             time.sleep(max(0, self.dt - elapsed_time))
 
-        print('mean dt', np.mean(history_dt))
-        print('median dt', np.median(history_dt))
-        print('max dt', np.max(history_dt))
-        print('min dt', np.min(history_dt))
-
+        print("mean dt", np.mean(history_dt))
+        print("median dt", np.median(history_dt))
+        print("max dt", np.max(history_dt))
+        print("min dt", np.min(history_dt))
 
 
 if __name__ == "__main__":
 
     argp = argparse.ArgumentParser()
-    argp.add_argument('--render',action='store_true', help='render the simulation')
+    argp.add_argument("--render", action="store_true", help="render the simulation")
 
     args = argp.parse_args()
 
-
-    sim = FlexivSim_dds_server(dt = 0.001, render = args.render ,  max_time=100.)
+    sim = FlexivSim_dds_server(dt=0.001, render=args.render, max_time=100.0)
     sim.run()
-
-

@@ -8,22 +8,24 @@ import cyclonedds.idl.types as types
 from cyclonedds.idl.types import int64, float32, array
 from cyclonedds.idl.types import int64, float32, sequence
 
+
 @dataclass
 @annotate.final
 @annotate.autoid("sequential")
 class FlexivCmd(idl.IdlStruct):
-    tau_ff: array[types.float64,7]
-    q: array[types.float64,7]
-    dq: array[types.float64,7]
-    kp: array[types.float64,7]
-    kv: array[types.float64,7]
+    tau_ff: array[types.float64, 7]
+    q: array[types.float64, 7]
+    dq: array[types.float64, 7]
+    kp: array[types.float64, 7]
+    kv: array[types.float64, 7]
     timestamp: str
+
 
 @dataclass
 @annotate.final
 @annotate.autoid("sequential")
 class FlexivState(idl.IdlStruct):
-    q: array[types.float64,7]
-    dq: array[types.float64,7]
-    tau: array[types.float64,7]
+    q: array[types.float64, 7]
+    dq: array[types.float64, 7]
+    tau: array[types.float64, 7]
     timestamp: str

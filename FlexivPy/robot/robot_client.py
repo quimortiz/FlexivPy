@@ -27,12 +27,12 @@ from FlexivPy.robot.dds.flexiv_messages import FlexivCmd, FlexivState
 
 
 class Flexiv_client:
-    def __init__(self,dt = .001, render=False, create_server=False):
+    def __init__(self, dt=0.001, render=False, create_server=False):
 
         self.dt = dt
         self.domain_participant = DomainParticipant()
-        self.topic_state = Topic(self.domain_participant, 'FlexivState', FlexivState)
-        self.topic_cmd = Topic(self.domain_participant, 'FlexivCmd', FlexivCmd)
+        self.topic_state = Topic(self.domain_participant, "FlexivState", FlexivState)
+        self.topic_cmd = Topic(self.domain_participant, "FlexivCmd", FlexivCmd)
         self.publisher = Publisher(self.domain_participant)
         self.subscriber = Subscriber(self.domain_participant)
         self.writer = DataWriter(self.publisher, self.topic_cmd)
@@ -45,29 +45,26 @@ class Flexiv_client:
         if self.create_server:
             import subprocess
             import time
-            cmd = ['python', 'FlexivPy/robot/sim/sim_robot_async.py' ]
-            if render:
-                cmd+= ['--render']
-            self.server_process = subprocess.Popen(cmd, env=os.environ.copy() )
 
-            time.sleep(.01)
+            cmd = ["python", "FlexivPy/robot/sim/sim_robot_async.py"]
+            if render:
+                cmd += ["--render"]
+            self.server_process = subprocess.Popen(cmd, env=os.environ.copy())
+
+            time.sleep(0.01)
 
         # create a smiluation in another process
 
-        print('waiting for robot to be ready...')
+        print("waiting for robot to be ready...")
         while not self.is_ready():
-            time.sleep(.01)
-        print('robot is ready!')
-
+            time.sleep(0.01)
+        print("robot is ready!")
 
     def is_ready(self):
         return self.getJointStates() is not None
 
-        
-    def set_cmd(self,cmd):
-        """
-
-        """
+    def set_cmd(self, cmd):
+        """ """
         # create the dds message
         # Get the current time
         now = datetime.now()
@@ -76,24 +73,27 @@ class Flexiv_client:
         timestamp_str = now.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
         # print("Timestamp with milliseconds:", timestamp_str)
-        msg_out = FlexivCmd( tau_ff=cmd['tau_ff'], q = cmd['q'], dq = cmd['dq'], kp = cmd['kp'], kv = cmd['kv'], timestamp = timestamp_str)
-
-
+        msg_out = FlexivCmd(
+            tau_ff=cmd["tau_ff"],
+            q=cmd["q"],
+            dq=cmd["dq"],
+            kp=cmd["kp"],
+            kv=cmd["kv"],
+            timestamp=timestamp_str,
+        )
 
         self.writer.write(msg_out)
 
     def step(self):
-        """
-
-        """
+        """ """
         if not self.warning_step_msg_send:
             self.warning_step_msg_send = True
-            print("WARNING: In the client the step runs asynchronusly! \n Wee keep the function here to use same interface!")
+            print(
+                "WARNING: In the client the step runs asynchronusly! \n Wee keep the function here to use same interface!"
+            )
 
     def close(self):
-        """
-
-        """
+        """ """
         print("closing the robot!")
         if self.create_server:
             print("closing the server")
@@ -101,11 +101,9 @@ class Flexiv_client:
             self.server_process.wait()  # Wait for the process to fully close
 
     def getJointStates(self):
-        """
-
-        """
+        """ """
         state = None
-        last_msg = self.reader.take() # last message is a list of 1 or empty
+        last_msg = self.reader.take()  # last message is a list of 1 or empty
 
         if last_msg:
             while True:
@@ -114,13 +112,9 @@ class Flexiv_client:
                     break
                 else:
                     last_msg = a
-            msg = last_msg[0] # now this is the last message
-            if msg  and type(msg) is FlexivState:
-                return { 'q': msg.q, 'dq': msg.dq}
+            msg = last_msg[0]  # now this is the last message
+            if msg and type(msg) is FlexivState:
+                return {"q": msg.q, "dq": msg.dq}
 
         else:
             return None
-
-
-
-
