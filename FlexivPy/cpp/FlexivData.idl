@@ -1,0 +1,17 @@
+module Flexiv {
+    struct FlexivCmd {
+        double tau_ff[7];
+        double q[7];
+        double dq[7];
+        double kp[7];
+        double kv[7];
+        string timestamp;
+    };
+
+    struct FlexivState {
+        double q[7];
+        double dq[7];
+        double tau[7];
+        string timestamp;
+    };
+};
