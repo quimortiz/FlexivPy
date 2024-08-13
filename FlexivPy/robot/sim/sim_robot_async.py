@@ -50,8 +50,7 @@ ASSETS_PATH = "assets/"
 
 class FlexivSim_dds_server:
 
-    def __init__(self, dt, render, max_time, q0, 
-                 pin_model):
+    def __init__(self, dt, render, max_time, q0, pin_model):
 
         self.pin_model = pin_model
         self.render = render
@@ -69,10 +68,9 @@ class FlexivSim_dds_server:
         self.reader = DataReader(self.subscriber, self.topic_cmd)
 
         # create a simulated robot
-        self.robot = sim_robot.FlexivSim(render=self.render, dt=self.dt,
-                                         q0=q0, pin_model=self.pin_model)
-
-
+        self.robot = sim_robot.FlexivSim(
+            render=self.render, dt=self.dt, q0=q0, pin_model=self.pin_model
+        )
 
         self.stop_dt = 0.01  # [s] if i don't receive a cmd in this time, stop the robot
 
@@ -174,10 +172,11 @@ if __name__ == "__main__":
 
     argp = argparse.ArgumentParser()
     argp.add_argument("--render", action="store_true", help="render the simulation")
-    argp.add_argument("--config", type=str, default='FlexivPy/config/robot.yaml', help="config file")
+    argp.add_argument(
+        "--config", type=str, default="FlexivPy/config/robot.yaml", help="config file"
+    )
 
     args = argp.parse_args()
-
 
     # load the config file
     with open(args.config, "r") as stream:
@@ -187,14 +186,14 @@ if __name__ == "__main__":
     if q0:
         q0 = np.array(q0)
 
-
     # I need a pinocchio robot
 
     robot_model = model_robot.FlexivModel(
-        render=False, 
+        render=False,
         q0=config.get("q0", None),
     )
 
-    sim = FlexivSim_dds_server(dt=0.001, render=args.render, max_time=100.0,
-                               q0=q0, pin_model=robot_model.robot)
+    sim = FlexivSim_dds_server(
+        dt=0.001, render=args.render, max_time=100.0, q0=q0, pin_model=robot_model.robot
+    )
     sim.run()

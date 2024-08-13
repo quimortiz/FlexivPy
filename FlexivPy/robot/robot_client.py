@@ -27,10 +27,9 @@ from FlexivPy.robot.dds.flexiv_messages import FlexivCmd, FlexivState
 
 
 class Flexiv_client:
-    def __init__(self, dt=0.001, render=False, create_server=False, 
-                 server_config_file=""):
-
-
+    def __init__(
+        self, dt=0.001, render=False, create_server=False, server_config_file=""
+    ):
 
         self.dt = dt
         self.domain_participant = DomainParticipant()
@@ -41,7 +40,9 @@ class Flexiv_client:
         self.writer = DataWriter(self.publisher, self.topic_cmd)
         self.reader = DataReader(self.subscriber, self.topic_state)
         self.warning_step_msg_send = False
-        self.warning_no_joint_states = .1 # complain if we do not receive joint states for this time
+        self.warning_no_joint_states = (
+            0.1  # complain if we do not receive joint states for this time
+        )
 
         self.create_server = create_server
         self.server_process = None
@@ -53,7 +54,7 @@ class Flexiv_client:
             cmd = ["python", "FlexivPy/robot/sim/sim_robot_async.py"]
             if render:
                 cmd += ["--render"]
-            if server_config_file: 
+            if server_config_file:
                 cmd += ["--config", server_config_file]
             self.server_process = subprocess.Popen(cmd, env=os.environ.copy())
 
@@ -67,7 +68,6 @@ class Flexiv_client:
         while not self.is_ready():
             time.sleep(0.05)
         print("robot is ready!")
-
 
     def is_ready(self):
         return self.getJointStates() is not None

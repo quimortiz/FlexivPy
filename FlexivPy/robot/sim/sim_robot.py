@@ -14,10 +14,16 @@ ASSETS_PATH = "FlexivPy/assets/"
 
 
 class FlexivSim:
-    def __init__(self, render=False, dt=0.001, xml_path=None, q0=None,
-                 gravity_comp=True,
-                 kv_damping = 1., 
-                 pin_model=None):
+    def __init__(
+        self,
+        render=False,
+        dt=0.001,
+        xml_path=None,
+        q0=None,
+        gravity_comp=True,
+        kv_damping=1.0,
+        pin_model=None,
+    ):
 
         assert pin_model is not None
 
@@ -50,9 +56,10 @@ class FlexivSim:
 
         self.gravity_comp = gravity_comp
 
-
         # lets check that the model is correct!
-        pin.computeGeneralizedGravity(self.pin_model.model, self.pin_model.data, np.zeros(7))
+        pin.computeGeneralizedGravity(
+            self.pin_model.model, self.pin_model.data, np.zeros(7)
+        )
 
         # self.reset()
         mujoco.mj_forward(self.model, self.data)
@@ -61,12 +68,12 @@ class FlexivSim:
 
         self.q0 = q0
         if self.q0 is not None:
-            print('q0 is', q0)
+            print("q0 is", q0)
             self.reset_state(q0, np.zeros(7))
             if self.render:
                 self.viewer.sync()
 
-        print('robot sim is ready!')
+        print("robot sim is ready!")
 
     def read_config(self, file):
         with open(file, "r") as stream:
@@ -74,7 +81,7 @@ class FlexivSim:
                 self.config = yaml.safe_load(stream)
             except yaml.YAMLError as exc:
                 print(exc)
-            
+
     def reset_state(self, q, dq):
         self.data.qpos = q
         self.data.qvel = dq
@@ -98,7 +105,9 @@ class FlexivSim:
         )
 
         if self.gravity_comp:
-            tau += pin.computeGeneralizedGravity(self.pin_model.model, self.pin_model.data, self.data.qpos)
+            tau += pin.computeGeneralizedGravity(
+                self.pin_model.model, self.pin_model.data, self.data.qpos
+            )
 
         if self.kv_damping > 0:
             tau -= self.kv_damping * self.data.qvel

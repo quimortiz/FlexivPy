@@ -22,7 +22,7 @@ reader = DataReader(subscriber, topic_state)
 robot_model = model_robot.FlexivModel(render=True)
 
 # TODO: wrap this in a nice class that servers as example for other users
-# E.g. timeoutime, Hz, ... 
+# E.g. timeoutime, Hz, ...
 
 stop_dt = 1.0  # if i don't receive a cmd in this time, stop the robot
 hz = 60

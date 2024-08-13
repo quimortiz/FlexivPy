@@ -28,17 +28,18 @@ class FlexivModel:
         robot = RobotWrapper.BuildFromURDF(self.urdf, self.meshes_dir)
         self.render = render
         if self.render:
-            self.vizer = MeshcatVisualizer(robot.model, robot.collision_model, robot.visual_model)
+            self.vizer = MeshcatVisualizer(
+                robot.model, robot.collision_model, robot.visual_model
+            )
             self.vizer.initViewer(loadModel=True)
             self.vizer.display(robot.q0)
 
         self.robot = robot
 
         if q0 is not None:
-            self.q0 = np.array([ 0., -.75, 0., 1.5, 0., .75, 0. ])
+            self.q0 = np.array([0.0, -0.75, 0.0, 1.5, 0.0, 0.75, 0.0])
         else:
             self.q0 = q0
-
 
     def display(self, q):
         if self.render:
