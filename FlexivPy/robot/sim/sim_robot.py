@@ -7,12 +7,19 @@ import mujoco.viewer
 import numpy as np
 from scipy.spatial.transform import Rotation
 import os
+import yaml
+import pinocchio as pin
 
 ASSETS_PATH = "FlexivPy/assets/"
 
 
 class FlexivSim:
-    def __init__(self, render=False, dt=0.001, xml_path=None):
+    def __init__(self, render=False, dt=0.001, xml_path=None, q0=None,
+                 gravity_comp=True,
+                 kv_damping = 1., 
+                 pin_model=None):
+
+        assert pin_model is not None
 
         if xml_path is None:
             self.model = mujoco.MjModel.from_xml_path(
@@ -25,6 +32,7 @@ class FlexivSim:
         self.dt = dt
         _render_dt = 1.0 / 30.0
         self.render_ds_ratio = max(1, _render_dt // dt)
+        self.kv_damping = kv_damping
 
         if render:
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
@@ -38,11 +46,39 @@ class FlexivSim:
         self.render = render
         self.step_counter = 0
         self.cmd = None
+        self.pin_model = pin_model
+
+        self.gravity_comp = gravity_comp
+
+
+        # lets check that the model is correct!
+        pin.computeGeneralizedGravity(self.pin_model.model, self.pin_model.data, np.zeros(7))
 
         # self.reset()
-        mujoco.mj_step(self.model, self.data)
+        mujoco.mj_forward(self.model, self.data)
         if self.render:
             self.viewer.sync()
+
+        self.q0 = q0
+        if self.q0 is not None:
+            print('q0 is', q0)
+            self.reset_state(q0, np.zeros(7))
+            if self.render:
+                self.viewer.sync()
+
+        print('robot sim is ready!')
+
+    def read_config(self, file):
+        with open(file, "r") as stream:
+            try:
+                self.config = yaml.safe_load(stream)
+            except yaml.YAMLError as exc:
+                print(exc)
+            
+    def reset_state(self, q, dq):
+        self.data.qpos = q
+        self.data.qvel = dq
+        mujoco.mj_forward(self.model, self.data)
 
     def step(self):
         self.step_counter += 1
@@ -60,6 +96,12 @@ class FlexivSim:
             + cmd["kp"] * (cmd["q"] - self.data.qpos)
             + cmd["kv"] * (cmd["dq"] - self.data.qvel)
         )
+
+        if self.gravity_comp:
+            tau += pin.computeGeneralizedGravity(self.pin_model.model, self.pin_model.data, self.data.qpos)
+
+        if self.kv_damping > 0:
+            tau -= self.kv_damping * self.data.qvel
 
         self.data.ctrl = tau
 

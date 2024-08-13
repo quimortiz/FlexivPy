@@ -27,7 +27,10 @@ from FlexivPy.robot.dds.flexiv_messages import FlexivCmd, FlexivState
 
 
 class Flexiv_client:
-    def __init__(self, dt=0.001, render=False, create_server=False):
+    def __init__(self, dt=0.001, render=False, create_server=False, 
+                 server_config_file=""):
+
+
 
         self.dt = dt
         self.domain_participant = DomainParticipant()
@@ -38,6 +41,7 @@ class Flexiv_client:
         self.writer = DataWriter(self.publisher, self.topic_cmd)
         self.reader = DataReader(self.subscriber, self.topic_state)
         self.warning_step_msg_send = False
+        self.warning_no_joint_states = .1 # complain if we do not receive joint states for this time
 
         self.create_server = create_server
         self.server_process = None
@@ -49,16 +53,21 @@ class Flexiv_client:
             cmd = ["python", "FlexivPy/robot/sim/sim_robot_async.py"]
             if render:
                 cmd += ["--render"]
+            if server_config_file: 
+                cmd += ["--config", server_config_file]
             self.server_process = subprocess.Popen(cmd, env=os.environ.copy())
 
             time.sleep(0.01)
 
         # create a smiluation in another process
+        self.last_state = None
+        self.time_last_state = time.time()
 
         print("waiting for robot to be ready...")
         while not self.is_ready():
-            time.sleep(0.01)
+            time.sleep(0.05)
         print("robot is ready!")
+
 
     def is_ready(self):
         return self.getJointStates() is not None
@@ -102,7 +111,6 @@ class Flexiv_client:
 
     def getJointStates(self):
         """ """
-        state = None
         last_msg = self.reader.take()  # last message is a list of 1 or empty
 
         if last_msg:
@@ -114,7 +122,12 @@ class Flexiv_client:
                     last_msg = a
             msg = last_msg[0]  # now this is the last message
             if msg and type(msg) is FlexivState:
-                return {"q": msg.q, "dq": msg.dq}
+                self.last_state = {"q": msg.q, "dq": msg.dq}
+                self.time_last_state = time.time()
+                return self.last_state
 
         else:
-            return None
+            tic = time.time()
+            if tic - self.time_last_state > self.warning_no_joint_states:
+                print(f"warning: no joint states in {self.warning_no_joint_states} [s]")
+            return self.last_state

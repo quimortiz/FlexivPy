@@ -4,25 +4,25 @@
     <mesh name="v_link0" file="rizon10s/visual/v_link0.obj"/>
     <mesh name="c_link0" file="rizon10s/collision/c_link0.stl"/>
     <mesh name="v_link1" file="rizon10s/visual/v_link1.obj"/>
-    <mesh name="v_ring1" file="rizon10s/visual/v_ring1.obj" scale="0.079 0.079 0.002"/>
+    <mesh name="v_ring1" file="rizon10s/visual/v_ring_s1.obj" />
     <mesh name="c_link1" file="rizon10s/collision/c_link1.stl"/>
     <mesh name="v_link2" file="rizon10s/visual/v_link2.obj"/>
-    <mesh name="v_ring2" file="rizon10s/visual/v_ring2.obj" scale="0.079 0.079 0.002"/>
+    <mesh name="v_ring2" file="rizon10s/visual/v_ring_s2.obj" />
     <mesh name="c_link2" file="rizon10s/collision/c_link2.stl"/>
     <mesh name="v_link3" file="rizon10s/visual/v_link3.obj"/>
-    <mesh name="v_ring3" file="rizon10s/visual/v_ring3.obj" scale="0.062 0.062 0.002"/>
+    <mesh name="v_ring3" file="rizon10s/visual/v_ring_s3.obj" />
     <mesh name="c_link3" file="rizon10s/collision/c_link3.stl"/>
     <mesh name="v_link4" file="rizon10s/visual/v_link4.obj"/>
-    <mesh name="v_ring4" file="rizon10s/visual/v_ring4.obj" scale="0.062 0.062 0.002"/>
+    <mesh name="v_ring4" file="rizon10s/visual/v_ring_s4.obj" />
     <mesh name="c_link4" file="rizon10s/collision/c_link4.stl"/>
     <mesh name="v_link5" file="rizon10s/visual/v_link5.obj"/>
-    <mesh name="v_ring5" file="rizon10s/visual/v_ring5.obj" scale="0.051 0.051 0.002"/>
+    <mesh name="v_ring5" file="rizon10s/visual/v_ring_s5.obj" />
     <mesh name="c_link5" file="rizon10s/collision/c_link5.stl"/>
     <mesh name="v_link6" file="rizon10s/visual/v_link6.obj"/>
-    <mesh name="v_ring6" file="rizon10s/visual/v_ring6.obj" scale="0.051 0.051 0.002"/>
+    <mesh name="v_ring6" file="rizon10s/visual/v_ring_s6.obj" />
     <mesh name="c_link6" file="rizon10s/collision/c_link6.stl"/>
     <mesh name="v_link7" file="rizon10s/visual/v_link7.obj"/>
-    <mesh name="v_ring7" file="rizon10s/visual/v_ring7.obj" scale="0.051 0.051 0.002"/>
+    <mesh name="v_ring7" file="rizon10s/visual/v_ring_s7.obj" />
     <mesh name="c_link7" file="rizon10s/collision/c_link7.stl"/>
   </asset>
   <worldbody>
