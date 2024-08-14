@@ -20,15 +20,15 @@ from cyclonedds.util import duration
 from datetime import datetime
 
 
+import subprocess
 import time
-
 
 from FlexivPy.robot.dds.flexiv_messages import FlexivCmd, FlexivState
 
 
 class Flexiv_client:
     def __init__(
-        self, dt=0.001, render=False, create_server=False, server_config_file=""
+        self, dt=0.001, render=False, create_sim_server=False, server_config_file=""
     ):
 
         self.dt = dt
@@ -44,12 +44,10 @@ class Flexiv_client:
             0.1  # complain if we do not receive joint states for this time
         )
 
-        self.create_server = create_server
+        self.create_sim_server = create_sim_server
         self.server_process = None
 
-        if self.create_server:
-            import subprocess
-            import time
+        if self.create_sim_server:
 
             cmd = ["python", "FlexivPy/robot/sim/sim_robot_async.py"]
             if render:
@@ -104,7 +102,7 @@ class Flexiv_client:
     def close(self):
         """ """
         print("closing the robot!")
-        if self.create_server:
+        if self.create_sim_server:
             print("closing the server")
             self.server_process.terminate()  # Terminate the process
             self.server_process.wait()  # Wait for the process to fully close
@@ -122,12 +120,12 @@ class Flexiv_client:
                     last_msg = a
             msg = last_msg[0]  # now this is the last message
             if msg and type(msg) is FlexivState:
-                self.last_state = {"q": msg.q, "dq": msg.dq}
+                self.last_state = {"q": np.array(msg.q), "dq": np.array(msg.dq)}
                 self.time_last_state = time.time()
                 return self.last_state
 
         else:
             tic = time.time()
             if tic - self.time_last_state > self.warning_no_joint_states:
-                print(f"warning: no joint states in {self.warning_no_joint_states} [s]")
+                print(f"warning: client did not recieve joint states in  last {self.warning_no_joint_states} [s]")
             return self.last_state

@@ -1,4 +1,4 @@
-module Flexiv {
+module FlexivMsg {
     struct FlexivCmd {
         double tau_ff[7];
         double q[7];

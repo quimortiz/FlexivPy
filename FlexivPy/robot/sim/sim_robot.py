@@ -21,7 +21,7 @@ class FlexivSim:
         xml_path=None,
         q0=None,
         gravity_comp=True,
-        kv_damping=1.0,
+        kv_damping=0.01,
         pin_model=None,
     ):
 

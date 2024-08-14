@@ -24,8 +24,28 @@
     <mesh name="v_link7" file="rizon10s/visual/v_link7.obj"/>
     <mesh name="v_ring7" file="rizon10s/visual/v_ring_s7.obj" />
     <mesh name="c_link7" file="rizon10s/collision/c_link7.stl"/>
+
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="wood" file="meshes/wood1.png"/>
+    <material name="wood" texuniform="true" texture="wood" reflectance="0.0"/>
+
   </asset>
+
+
+
   <worldbody>
+
+  <body>
+      <camera name="static_camera" pos="1 0 1" quat="0.6830127 0.1830127 0.1830127 0.6830127" />
+    <!--https://www.andre-gaschler.com/rotationconverter/-->
+    <!--      ZYX 30 0 90-->
+    <!--change quaternion convention-->
+  </body>
+
+
+  <geom name="floor" size=".7 1.5 .1" pos=".5 .0 0 " type="plane" material="wood"/>
+
+
     <geom name="shell-0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.4 0.4 0.4 1" mesh="v_link0"/>
     <geom name="hull-0" type="mesh" rgba="1 1 1 1" mesh="c_link0"/>
     <body name="link1" pos="0 0 0.21" quat="0 0 0 -1">

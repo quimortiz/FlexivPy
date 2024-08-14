@@ -6,6 +6,7 @@ import time
 import yaml
 import argparse
 import pinocchio as pin
+import easy_controllers
 
 argp = argparse.ArgumentParser(description="FlexivPy")
 argp.add_argument("--mode", type=str, default="sim", help="mode: real, sim, sim_async")
@@ -13,6 +14,8 @@ argp.add_argument("--render", action="store_true", help="render the simulation")
 argp.add_argument(
     "--config", type=str, default="FlexivPy/config/robot.yaml", help="config file"
 )
+argp.add_argument("--create_sim_server", action="store_true", help="create a server")
+
 args = argp.parse_args()
 
 if args.mode not in ["sim", "real", "sim_async"]:
@@ -29,7 +32,9 @@ robot_model = model_robot.FlexivModel(
 server_process = None
 if args.mode == "sim_async":
     robot = robot_client.Flexiv_client(
-        render=args.render, create_server=True, server_config_file=args.config
+        render=args.render,
+        create_sim_server=args.create_sim_server,
+        server_config_file=args.config,
     )
 
 elif args.mode == "sim":
@@ -39,32 +44,50 @@ elif args.mode == "sim":
     robot.reset_state(config.get("q0"), np.zeros(7))
 
 elif args.mode == "real":
-    robot = robot_client.Flexiv_client(create_server=False)
-
-des_q = np.array(config.get("q0"))
+    robot = robot_client.Flexiv_client( render=False, create_sim_server=False)
 
 
-for i in range(100000):
-    tic = time.time()
-    s = robot.getJointStates()  # in Flexiv_client with simulation server, s may be None
+simulation_time_s = 20
 
-    # NOTE: gravity compesation is running inside the simulator!!
-    cmd = {
-        "tau_ff": np.zeros(7),
-        "q": des_q,
-        "dq": np.zeros(7),
-        "kp": 10.0 * np.ones(7),
-        "kv": 5.0 * np.ones(7),
-    }
 
-    robot.set_cmd(cmd)
+warn_time_dt = False
 
-    if args.mode == "sim":
-        robot.step()  # note: in sim_async and real this does nothing!
 
-    toc = time.time()
+print_state_every = 500
 
-    if (toc - tic) > robot.dt:
-        print(f"warning: loop time {toc-tic} is greater than dt")
+# controller = easy_controllers.Controller_static_q0(robot_model, config.get("q0", None))
 
-    time.sleep(max(0, robot.dt - (toc - tic)))
+
+controller = easy_controllers.Controller_joint_example(robot_model, config.get("q0", None)
+                                                                               ,joint_control=True)
+# controller = easy_controllers.Controller_joint_PD(robot_model)
+# controller.pd_on_acceleration = True
+try:
+    for i in range(1000 * simulation_time_s):
+
+        tic = time.time()
+        s = robot.getJointStates()
+
+        cmd = controller.get_control(s, robot_model.robot)
+        robot.set_cmd(cmd)
+
+        if args.mode == "sim":
+            robot.step()  # note: in sim_async and real this does nothing!
+
+        toc = time.time()
+
+        if (toc - tic) > robot.dt and warn_time_dt:
+            print(f"warning: loop time {toc-tic} is greater than dt")
+
+        time.sleep(max(0, robot.dt - (toc - tic)))
+
+        if i % print_state_every == 0:
+            print(f"i: {i}, q: {s['q']}, dq: {s['dq']}")
+    robot.close()
+except Exception as e:
+    # 'e' contains the exception details
+    print(f"An error occurred: {e}")
+
+    print("Error in the loop")
+    # lets kill the async server if it was created
+    robot.close()
