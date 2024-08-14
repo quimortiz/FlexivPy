@@ -87,6 +87,7 @@ class Flexiv_client:
             kp=cmd["kp"],
             kv=cmd["kv"],
             timestamp=timestamp_str,
+            mode=cmd["mode"],
         )
 
         self.writer.write(msg_out)

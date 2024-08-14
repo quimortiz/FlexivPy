@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import cyclonedds.idl as idl
 import cyclonedds.idl.annotations as annotate
 import cyclonedds.idl.types as types
-from cyclonedds.idl.types import int64, float32, array
+from cyclonedds.idl.types import int64, float32, array, int32
 from cyclonedds.idl.types import int64, float32, sequence
 
 
@@ -19,6 +19,7 @@ class FlexivCmd(idl.IdlStruct):
     kp: array[types.float64, 7]
     kv: array[types.float64, 7]
     timestamp: str
+    mode: int32
 
 
 @dataclass

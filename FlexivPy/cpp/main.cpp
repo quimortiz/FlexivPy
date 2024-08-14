@@ -45,6 +45,55 @@
 
 using namespace org::eclipse::cyclonedds;
 
+const std::vector<double> kImpedanceKp = {3000.0, 3000.0, 800.0, 800.0,
+                                          200.0,  200.0,  200.0};
+
+const std::vector<double> kImpedanceKd = {80.0, 80.0, 40.0, 40.0,
+                                          8.0,  8.0,  8.0};
+
+// Helper function to format the error message with file, line, and function
+// details
+std::string format_error_message(const std::string &message, const char *file,
+                                 int line, const char *func) {
+  std::ostringstream oss;
+  oss << "Error: " << message << "\n"
+      << "File: " << file << "\n"
+      << "Line: " << line << "\n"
+      << "Function: " << func << "\n";
+  return oss.str();
+}
+std::pair<std::vector<double>, std::vector<double>>
+adjust_limits_interval(double margin, const std::vector<double> &q_min,
+                       const std::vector<double> &q_max) {
+  // Check that the vectors are of the same size
+  if (q_min.size() != q_max.size()) {
+    throw std::invalid_argument("q_min and q_max must have the same size");
+  }
+
+  std::vector<double> new_q_min(q_min.size());
+  std::vector<double> new_q_max(q_max.size());
+
+  for (size_t i = 0; i < q_min.size(); ++i) {
+    double margin_i =
+        margin * (q_max[i] - q_min[i]); // 2.5% of the range on each side
+    new_q_min[i] = q_min[i] + margin_i;
+    new_q_max[i] = q_max[i] - margin_i;
+  }
+
+  return std::make_pair(new_q_min, new_q_max);
+}
+
+void scale_vector(std::vector<double> &vec, double scale) {
+  for (auto &v : vec) {
+    v *= scale;
+  }
+}
+
+// Macro to throw an exception with detailed information
+#define throw_pretty(message)                                                  \
+  throw std::runtime_error(                                                    \
+      format_error_message(message, __FILE__, __LINE__, __PRETTY_FUNCTION__))
+
 std::string get_current_timestamp() {
   // Get the current time
   auto now = std::chrono::system_clock::now();
@@ -98,9 +147,14 @@ struct Robot {
   virtual void get_state(FlexivMsg::FlexivState &state) = 0;
   virtual void send_cmd(const FlexivMsg::FlexivCmd &cmd) = 0;
 
+  virtual void compute_default_cmd(const FlexivMsg::FlexivState &state,
+                                   FlexivMsg::FlexivCmd &cmd) {
+    (void)cmd;
+  }
+
   virtual void start() {}
   virtual void stop() {}
-  virtual void get_cmd(FlexivMsg::FlexivCmd &cmd) {}
+  virtual void get_cmd(FlexivMsg::FlexivCmd &cmd) { (void)cmd; }
 
   virtual ~Robot() {}
 };
@@ -157,7 +211,7 @@ public:
   }
 };
 
-double euclid_norm(const std::vector<double> &vec) {
+double euclidean_norm(const std::vector<double> &vec) {
   double norm = 0;
   for (auto &v : vec) {
     norm += v * v;
@@ -182,6 +236,15 @@ double euclidean_distance(const std::vector<double> &vec1,
   return std::sqrt(dist);
 }
 
+double inf_distance(const std::vector<double> &vec1,
+                    const std::vector<double> &vec2) {
+  double dist = 0;
+  for (size_t i = 0; i < vec1.size(); i++) {
+    dist = std::max(dist, std::abs(vec1[i] - vec2[i]));
+  }
+  return dist;
+}
+
 void print_vector(const std::vector<double> &vec) {
   for (auto &v : vec) {
     std::cout << v << " ";
@@ -193,11 +256,35 @@ struct RealRobot : Robot {
   flexiv::rdk::Robot robot;
   flexiv::rdk::Mode robot_mode = flexiv::rdk::Mode::RT_JOINT_POSITION;
   flexiv::rdk::Scheduler scheduler;
+  bool fake_commands = false;
+  // it true, we just print the commands to the screen.
 
   // this is called by the scheduler
+  //
+  //
+  //
   void callback() {
     cmd_msg.get(_cmd);
-    _send_cmd(_cmd);
+    if (robot_mode == flexiv::rdk::Mode::RT_JOINT_POSITION) {
+
+      // continue here!!
+      // use mode to indicate the type of control!
+      if (_cmd.mode() != 1) {
+        throw_pretty("we are in Joint Position mode, but the command is not of "
+                     "type Joint Position");
+      }
+      _send_cmd_position(_cmd);
+    } else if (robot_mode == flexiv::rdk::Mode::RT_JOINT_TORQUE) {
+
+      if (_cmd.mode() != 2) {
+        throw_pretty("we are in Joint Torque mode, but the command is not of "
+                     "type Joint Torque");
+      }
+
+      _send_cmd_torque(_cmd);
+    } else {
+      throw_pretty("Mode not implemented");
+    }
     _get_state(_state);
     state_msg.update(_state);
   }
@@ -208,9 +295,38 @@ struct RealRobot : Robot {
     scheduler.Start();
   }
 
+  virtual void compute_default_cmd(const FlexivMsg::FlexivState &state,
+                                   FlexivMsg::FlexivCmd &cmd) override {
+
+    cmd.tau_ff().fill(0.);
+    cmd.dq().fill(0.);
+    cmd.q() = state.q();
+
+    if (robot_mode == flexiv::rdk::Mode::RT_JOINT_POSITION) {
+      cmd.mode() = 1;
+    } else if (robot_mode == flexiv::rdk::Mode::RT_JOINT_TORQUE) {
+      cmd.mode() = 2;
+
+      double scaling = .2;
+
+      std::vector<double> t_kImpedanceKp = kImpedanceKp;
+      std::vector<double> t_kImpedanceKd = kImpedanceKd;
+
+      scale_vector(t_kImpedanceKp, scaling);
+      scale_vector(t_kImpedanceKd, scaling);
+
+      std::copy(t_kImpedanceKp.begin(), t_kImpedanceKp.end(), cmd.kp().begin());
+      std::copy(t_kImpedanceKd.begin(), t_kImpedanceKd.end(), cmd.kv().begin());
+
+    } else {
+      throw_pretty("Mode not implemented");
+    }
+  }
+
   virtual void stop() override { scheduler.Stop(); }
 
-  RealRobot(std::string robot_serial_number, bool go_home = true)
+  RealRobot(std::string robot_serial_number, flexiv::rdk::Mode t_robot_mode,
+            bool go_home)
       : robot(robot_serial_number) {
     std::cout << "Real robot created" << std::endl;
 
@@ -221,7 +337,7 @@ struct RealRobot : Robot {
       // Try to clear the fault
       if (!robot.ClearFault()) {
         spdlog::error("Fault cannot be cleared, exiting ...");
-        throw std::runtime_error("Fault cannot be cleared");
+        throw_pretty("Fault cannot be cleared");
       }
       spdlog::info("Fault on the connected robot is cleared");
     }
@@ -239,7 +355,7 @@ struct RealRobot : Robot {
     // Move robot to home pose
     if (go_home) {
       spdlog::info("Moving to home pose");
-      robot.SwitchMode(flexiv::rdk::Mode::NRT_PRIMITIVE_EXECUTION);
+      switch_mode_sync(flexiv::rdk::Mode::NRT_PRIMITIVE_EXECUTION);
       robot.ExecutePrimitive("Home()");
 
       // Wait for the primitive to finish
@@ -248,10 +364,7 @@ struct RealRobot : Robot {
       }
     }
 
-    // Real-time Joint Position Control
-    // =========================================================================================
-    // Switch to real-time joint position control mode
-    robot.SwitchMode(flexiv::rdk::Mode::RT_JOINT_POSITION);
+    switch_mode_sync(t_robot_mode);
 
     // Set initial joint positions
     auto init_pos = robot.states().q;
@@ -262,16 +375,31 @@ struct RealRobot : Robot {
     FlexivMsg::FlexivCmd tmp_cmd;
 
     _get_state(tmp_state);
-    tmp_cmd.q() = tmp_state.q();
-
-    std::cout << "Initial state is " << std::endl;
-    std::cout << tmp_state << std::endl;
+    compute_default_cmd(tmp_state, tmp_cmd);
 
     std::cout << "Initial cmd is" << std::endl;
     std::cout << tmp_cmd << std::endl;
 
     state_msg.update(tmp_state);
     cmd_msg.update(tmp_cmd);
+
+    auto bounds =
+        adjust_limits_interval(.02, robot.info().q_min, robot.info().q_max);
+    q_min = bounds.first;
+    q_max = bounds.second;
+
+    tau_min.resize(7);
+    tau_max.resize(7);
+
+    for (size_t i = 0; i < 7; i++) {
+      tau_min[i] = -10.;
+      tau_max[i] = 10.;
+    }
+  }
+
+  void switch_mode_sync(flexiv::rdk::Mode t_robot_mode) {
+    robot.SwitchMode(t_robot_mode);
+    robot_mode = t_robot_mode;
   }
 
   virtual void get_state(FlexivMsg::FlexivState &state) override {
@@ -282,11 +410,16 @@ struct RealRobot : Robot {
     cmd_msg.update(cmd);
   }
 
-  virtual void get_cmd(FlexivMsg::FlexivCmd &cmd) { cmd_msg.get(cmd); }
+  virtual void get_cmd(FlexivMsg::FlexivCmd &cmd) override { cmd_msg.get(cmd); }
 
 private:
   SyncData<FlexivMsg::FlexivCmd> cmd_msg;
   SyncData<FlexivMsg::FlexivState> state_msg;
+  std::vector<double> q_min;
+  std::vector<double> q_max;
+
+  std::vector<double> tau_min;
+  std::vector<double> tau_max;
 
   FlexivMsg::FlexivCmd
       _cmd; // just to avoid memory allocation. Do not use outside callback!
@@ -296,8 +429,72 @@ private:
   double max_norm_vel = 6;
   double max_norm_acc = 2;
   double max_distance = .3;
+  double max_distance_vel = 7;
 
-  virtual void _send_cmd(const FlexivMsg::FlexivCmd &cmd) {
+  virtual void _send_cmd_torque(const FlexivMsg::FlexivCmd &cmd) {
+
+    // TODO: Preallocate the vectors!
+    std::vector<double> torque(7, 0);
+    std::vector<double> q = robot.states().q;
+    std::vector<double> dq = robot.states().dtheta;
+
+    std::vector<double> target_pose(cmd.q().begin(), cmd.q().end());
+    std::vector<double> target_vel(cmd.dq().begin(), cmd.dq().end());
+
+    // check that q is close the current position
+    if (euclidean_distance(target_pose, robot.states().q) > max_distance ||
+        inf_distance(q, robot.states().q) > max_distance / 2.) {
+      throw_pretty("Position is too far from current position");
+    }
+
+    if (euclidean_norm(target_vel) > max_norm_vel ||
+        inf_norm(target_vel) > max_norm_vel / 2.) {
+      throw_pretty("Velocity norm is too high");
+    }
+
+    if (q.size() != 7 || dq.size() != 7 || torque.size() != 7) {
+      throw_pretty("Vector size does not match array size!");
+    }
+
+    if (cmd.tau_ff().size() != 7 || cmd.kp().size() != 7 ||
+        cmd.kv().size() != 7 || cmd.q().size() != 7 || cmd.dq().size() != 7) {
+      throw_pretty("Vector size does not match array size!");
+    }
+
+    for (size_t i = 0; i < 7; i++) {
+      torque[i] = cmd.tau_ff()[i] + cmd.kp()[i] * (cmd.q()[i] - q[i]) +
+                  cmd.kp()[i] * (cmd.dq()[i] - dq[i]);
+    }
+
+    // check that the desired velocity is close to 0.
+
+    // check that there are non NAns or infs
+
+    for (auto &i : torque) {
+      if (std::isnan(i) || std::isinf(i)) {
+        throw_pretty("Nan in torque");
+      }
+    }
+
+    for (size_t i = 0; i < torque.size(); i++) {
+      if (torque[i] < tau_min[i] or torque[i] > tau_max[i]) {
+        throw std::runtime_error("Torque is out of limits");
+      }
+    }
+
+    if (fake_commands) {
+      std::cout << "Sending command to robot" << std::endl;
+      std::cout << "Torque: ";
+      print_vector(torque);
+      return;
+    } else {
+      robot.StreamJointTorque(torque);
+    }
+
+    // check that the torque is inside limits
+  }
+
+  virtual void _send_cmd_position(const FlexivMsg::FlexivCmd &cmd) {
 
     std::vector<double> target_pos(7, 0);
     std::vector<double> target_vel(7, 0);
@@ -306,34 +503,83 @@ private:
     if (cmd.q().size() == target_pos.size()) {
       std::copy(cmd.q().begin(), cmd.q().end(), target_pos.begin());
     } else {
-      std::cerr << "Vector size does not match array size!" << std::endl;
-      throw std::runtime_error("Vector size does not match array size!");
-    }
-    /*std::cout << "Sending command to robot" << std::endl;*/
-    /*std::cout << get_current_timestamp() << std::endl;*/
-
-    // check that the euclid
-    if (euclid_norm(target_vel) > max_norm_vel) {
-      throw std::runtime_error("Velocity norm is too high");
+      throw_pretty("Vector size does not match array size!");
     }
 
-    if (euclid_norm(target_acc) > max_norm_acc) {
-      throw std::runtime_error("Acceleration norm is too high");
+    if (cmd.dq().size() == target_vel.size()) {
+      std::copy(cmd.dq().begin(), cmd.dq().end(), target_vel.begin());
+    } else {
+      throw_pretty("Vector size does not match array size!");
     }
 
-    if (euclidean_distance(target_pos, robot.states().q) > max_distance) {
-      throw std::runtime_error("Position is too far from current position");
+    // Lots of sanity checks!!
+
+    if (q_min.size() != target_pos.size() ||
+        q_max.size() != target_pos.size()) {
+      throw_pretty("Vector size does not match array size!");
     }
 
-    /*std::cout << "Sending command to robot" << std::endl;*/
+    for (size_t i = 0; i < target_pos.size(); i++) {
+      if (target_pos[i] < q_min[i] or target_pos[i] > q_max[i]) {
+        throw std::runtime_error("Position is out of limits");
+      }
+    }
+
+    for (auto &i : target_pos) {
+      if (std::isnan(i) or std::isinf(i)) {
+        throw std::runtime_error("Nan in target position");
+      }
+    }
+
+    for (auto &i : target_vel) {
+      if (std::isnan(i) or std::isinf(i)) {
+        throw_pretty("Nan in target velocity");
+      }
+    }
+
+    for (auto &i : target_acc) {
+      if (std::isnan(i) or std::isinf(i)) {
+        throw_pretty("Nan in target acceleration");
+      }
+    }
+
+    if (euclidean_norm(target_vel) > max_norm_vel) {
+      throw_pretty("Velocity norm is too high");
+    }
+
+    if (euclidean_norm(target_acc) > max_norm_acc) {
+      throw_pretty("Acceleration norm is too high");
+    }
+
+    if (euclidean_distance(target_pos, robot.states().q) > max_distance ||
+        inf_distance(target_pos, robot.states().q) > max_distance / 2.) {
+      throw_pretty("Position is too far from current position");
+    }
+
+    // TODO: check the reading of the velocity!
+    /*if (euclidean_distance(target_vel, robot.states().dtheta) >
+     * max_distance_vel or*/
+    /*    inf_distance(target_vel, robot.states().dtheta) > max_distance_vel
+     * / 2.)
+     * {*/
+    /*  {*/
+    /*    throw_pretty("Velocity is too far from current Velocity");*/
+    /*  }*/
     /**/
-    /*print_vector(target_pos);*/
-    /*print_vector(robot.states().q);*/
-    /**/
-    /*print_vector(target_vel);*/
-    /*print_vector(target_acc);*/
-    /**/
-    robot.StreamJointPosition(target_pos, target_vel, target_acc);
+    /*}*/
+
+    if (fake_commands) {
+      std::cout << "Sending command to robot" << std::endl;
+      std::cout << "Position: ";
+      print_vector(target_pos);
+      std::cout << "Velocity: ";
+      print_vector(target_vel);
+      std::cout << "Acceleration: ";
+      print_vector(target_acc);
+      return;
+    } else {
+      robot.StreamJointPosition(target_pos, target_vel, target_acc);
+    }
   }
 
   virtual void _get_state(FlexivMsg::FlexivState &state) {
@@ -341,32 +587,35 @@ private:
     state.timestamp(time);
 
     auto q = robot.states().q;
-    auto dq = robot.states().dq;
+    auto dq = robot.states().dtheta;
 
     if (q.size() == state.q().size()) {
       std::copy(q.begin(), q.end(), state.q().begin());
     } else {
-      throw std::runtime_error("Vector size does not match array size!");
+      throw_pretty("Vector size does not match array size!");
     }
     if (dq.size() == state.dq().size()) {
       std::copy(dq.begin(), dq.end(), state.dq().begin());
     } else {
-      throw std::runtime_error("Vector size does not match array size!");
+      throw_pretty("Vector size does not match array size!");
     }
   }
 };
 
 int main(int argc, char *argv[]) {
 
-  if (argc != 3) {
-    std::cerr << "Usage: " << argv[0]
-              << " <{0:fake,1:real}> <robot_serial_number>" << std::endl;
+  if (argc != 4) {
+    std::cerr
+        << "Usage: " << argv[0]
+        << " <{0:fake,1:real}> <robot_serial_number> <0:Error,1:Kin,2:Torque>"
+        << std::endl;
     return 1; // Return a non-zero value to indicate an error
   }
 
   // Extract the robot serial number from the command-line arguments
-  int mode = std::stoi(argv[1]);
+  int real_mode = std::stoi(argv[1]);
   std::string robot_serial_number = argv[2];
+  int operation_mode = std::stoi(argv[3]);
 
   try {
 
@@ -378,7 +627,6 @@ int main(int argc, char *argv[]) {
     double max_time_s = 50;
     double dt_us = dt * 1e6;
 
-
     /* First, a domain participant is needed.
      * Create one on the default domain. */
     dds::domain::DomainParticipant participant(domain::default_id());
@@ -389,7 +637,8 @@ int main(int argc, char *argv[]) {
     /* A reader also needs a subscriber. */
     dds::sub::Subscriber subscriber(participant);
 
-    /* Now, the reader can be created to subscribe to a HelloWorld message. */
+    /* Now, the reader can be created to subscribe to a HelloWorld message.
+     */
     dds::sub::DataReader<FlexivMsg::FlexivCmd> reader(subscriber, topic_cmd);
 
     /* To publish something, a topic is needed. */
@@ -409,11 +658,28 @@ int main(int argc, char *argv[]) {
 
     std::shared_ptr<Robot> robot;
 
-    if (mode == 0) {
+    if (real_mode == 0) {
       bool write_to_file = false;
       robot = std::make_shared<Fake_robot>(write_to_file);
-    } else if (mode == 1) {
-      robot = std::make_shared<RealRobot>(robot_serial_number);
+    } else if (real_mode == 1) {
+
+      flexiv::rdk::Mode t_robot_mode;
+
+      if (operation_mode == 0) {
+        throw_pretty("Error mode not implemented");
+      } else if (operation_mode == 1) {
+        t_robot_mode = flexiv::rdk::Mode::RT_JOINT_POSITION;
+      } else if (operation_mode == 2) {
+        t_robot_mode = flexiv::rdk::Mode::RT_JOINT_TORQUE;
+      }
+
+      else {
+        throw_pretty("Operation mode not implemented");
+      }
+      bool go_home = true;
+
+      robot = std::make_shared<RealRobot>(robot_serial_number, t_robot_mode,
+                                          go_home);
     }
 
     robot->get_state(state_msg);
@@ -447,9 +713,7 @@ int main(int argc, char *argv[]) {
                                                                 last_msg_time)
               .count() > stop_dt_if_no_msg_ms) {
 
-        cmd_msg.q() =
-            state_msg.q(); // NOTE: this might drift! -- try to put in loop
-        std::fill(cmd_msg.dq().begin(), cmd_msg.dq().end(), 0.0);
+        robot->compute_default_cmd(state_msg, cmd_msg);
 
         if (!warning_send) {
           std::cout << "No message received in " << stop_dt_if_no_msg_ms
@@ -496,7 +760,7 @@ int main(int argc, char *argv[]) {
       }
 
       robot->send_cmd(cmd_msg);
-      /*robot->get_state(state_msg);*/
+      robot->get_state(state_msg);
       writer.write(state_msg);
 
       int time_loop_us =

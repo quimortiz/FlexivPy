@@ -101,7 +101,7 @@ class Controller_joint_PD:
 
 class Controller_joint_example:
 
-    def __init__(self, robot_model, q0, joint_control = True):
+    def __init__(self, robot_model, q0):
         """
         """
         self.robot_model = robot_model
@@ -110,23 +110,20 @@ class Controller_joint_example:
         self.kSineFreq = 0.2;
         self.q0 = q0
         self.loop_counter = 0
-        self.joint_control = joint_control
         self.kp = 100
 
     def get_control(self,state,robot_model):
-        target_pos = self.q0 + self.kSineAmp * np.sin(2 * np.pi * self.kSineFreq * self.loop_counter * self.kLoopPeriod)
+        target_pos = self.q0 + min(1.0 , np.exp(0.0001 * self.loop_counter) - 1. ) * self.kSineAmp * np.sin(2 * np.pi * self.kSineFreq * self.loop_counter * self.kLoopPeriod)
         self.loop_counter += 1
 
-        if self.joint_control:
-            cmd = {
-                "tau_ff": np.zeros(7),
-                "q": target_pos,
-                "dq": np.zeros(7),
-                "kp": np.ones(7),
-                "kv":  np.ones(7),
-            }
-        else:
-            raise NotImplementedError('only joint control implemented')
+        cmd = {
+            "tau_ff": np.zeros(7),
+            "q": target_pos,
+            "dq": np.zeros(7),
+            "kp": self.kp *  np.ones(7),
+            "kv":  np.ones(7),
+            "mode": 1,
+        }
 
         return cmd
             

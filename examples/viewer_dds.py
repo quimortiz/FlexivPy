@@ -24,7 +24,7 @@ robot_model = model_robot.FlexivModel(render=True)
 # TODO: wrap this in a nice class that servers as example for other users
 # E.g. timeoutime, Hz, ...
 
-stop_dt = 1.0  # if i don't receive a cmd in this time, stop the robot
+stop_dt = 100.0  # if i don't receive a cmd in this time, stop the robot
 hz = 60
 dt = 1 / hz
 max_time = 100
@@ -50,7 +50,7 @@ time_start = time.time()
 while time.time() - time_start < max_time:
 
     if time.time() - time_last_msg > stop_dt:
-        raise Exception("No state received in {} seconds".format(stop_dt))
+        raise Exception(f"No state received in {stop_dt} seconds")
 
     last_msg = reader.take()
 
@@ -63,7 +63,8 @@ while time.time() - time_start < max_time:
                 last_msg = a
     if last_msg:
         state = last_msg[0]
-        time_last_msg = time.time()
-        robot_model.display(np.array(state.q))
+        if type(state) == FlexivState:
+            time_last_msg = time.time()
+            robot_model.display(np.array(state.q))
 
     time.sleep(dt)

@@ -87,6 +87,7 @@ class FlexivSim_dds_server:
         warning_send = False
         good_satus_send = False
         history_dt = []
+        warning_dt_send = False
 
         # we start with the default cmd
         self.robot.set_cmd(self.default_cmd)
@@ -156,9 +157,11 @@ class FlexivSim_dds_server:
             elapsed_time = toc - tic
             history_dt.append(elapsed_time)
             if elapsed_time > self.dt:
-                print(
-                    f"warning! elapsed time:  {elapsed_time} is greater than dt: {self.dt}"
-                )
+                if not warning_dt_send:
+                    warning_dt_send = True
+                    print(
+                        f"warning! elapsed time:  {elapsed_time} is greater than dt: {self.dt}"
+                    )
 
             time.sleep(max(0, self.dt - elapsed_time))
 

@@ -6,6 +6,7 @@ module FlexivMsg {
         double kp[7];
         double kv[7];
         string timestamp;
+        int32 mode;
     };
 
     struct FlexivState {

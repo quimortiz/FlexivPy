@@ -47,7 +47,7 @@ elif args.mode == "real":
     robot = robot_client.Flexiv_client( render=False, create_sim_server=False)
 
 
-simulation_time_s = 20
+simulation_time_s = 50
 
 
 warn_time_dt = False
@@ -58,10 +58,33 @@ print_state_every = 500
 # controller = easy_controllers.Controller_static_q0(robot_model, config.get("q0", None))
 
 
-controller = easy_controllers.Controller_joint_example(robot_model, config.get("q0", None)
-                                                                               ,joint_control=True)
+controller = easy_controllers.Controller_joint_example(robot_model, config.get("q0", None))
+
+# controller = easy_controllers.Controller_torque_example(robot_model, config.get("q0", None))
+
 # controller = easy_controllers.Controller_joint_PD(robot_model)
 # controller.pd_on_acceleration = True
+
+
+# lets wait until we receive information from the robot
+
+print("waiting for robot to be ready")
+
+max_wait_time = 10
+
+tic_wait = time.time()
+robot_ready  = False
+while  time.time() - tic_wait < max_wait_time:
+    robot_ready = robot.is_ready()
+    if robot_ready:
+        break
+    time.sleep(0.1)
+
+if  not robot_ready:
+    raise ValueError("robot is not ready")
+else:
+    print("robot is ready!")
+
 try:
     for i in range(1000 * simulation_time_s):
 
@@ -81,8 +104,6 @@ try:
 
         time.sleep(max(0, robot.dt - (toc - tic)))
 
-        if i % print_state_every == 0:
-            print(f"i: {i}, q: {s['q']}, dq: {s['dq']}")
     robot.close()
 except Exception as e:
     # 'e' contains the exception details
