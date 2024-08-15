@@ -307,13 +307,14 @@ struct RealRobot : Robot {
     } else if (robot_mode == flexiv::rdk::Mode::RT_JOINT_TORQUE) {
       cmd.mode() = 2;
 
-      double scaling = .2;
+      double scaling_kp = .4;
+      double scaling_kv = 1.;
 
       std::vector<double> t_kImpedanceKp = kImpedanceKp;
       std::vector<double> t_kImpedanceKd = kImpedanceKd;
 
-      scale_vector(t_kImpedanceKp, scaling);
-      scale_vector(t_kImpedanceKd, scaling);
+      scale_vector(t_kImpedanceKp, scaling_kp);
+      scale_vector(t_kImpedanceKd, scaling_kv);
 
       std::copy(t_kImpedanceKp.begin(), t_kImpedanceKp.end(), cmd.kp().begin());
       std::copy(t_kImpedanceKd.begin(), t_kImpedanceKd.end(), cmd.kv().begin());
@@ -392,8 +393,8 @@ struct RealRobot : Robot {
     tau_max.resize(7);
 
     for (size_t i = 0; i < 7; i++) {
-      tau_min[i] = -10.;
-      tau_max[i] = 10.;
+      tau_min[i] = -30.;
+      tau_max[i] = 30.;
     }
   }
 
@@ -444,6 +445,9 @@ private:
     // check that q is close the current position
     if (euclidean_distance(target_pose, robot.states().q) > max_distance ||
         inf_distance(q, robot.states().q) > max_distance / 2.) {
+      std::cout << "ERROR" << std::endl;
+      print_vector(target_pose);
+      print_vector(robot.states().q);
       throw_pretty("Position is too far from current position");
     }
 
@@ -463,7 +467,7 @@ private:
 
     for (size_t i = 0; i < 7; i++) {
       torque[i] = cmd.tau_ff()[i] + cmd.kp()[i] * (cmd.q()[i] - q[i]) +
-                  cmd.kp()[i] * (cmd.dq()[i] - dq[i]);
+                  cmd.kv()[i] * (cmd.dq()[i] - dq[i]);
     }
 
     // check that the desired velocity is close to 0.
@@ -478,7 +482,16 @@ private:
 
     for (size_t i = 0; i < torque.size(); i++) {
       if (torque[i] < tau_min[i] or torque[i] > tau_max[i]) {
-        throw std::runtime_error("Torque is out of limits");
+        print_vector(torque);
+        std::cout << "i: " << i << " " << torque[i] << " " << tau_min[i] << " "
+                  << tau_max[i] << std::endl;
+        std::cout << "cmd " << std::endl;
+        std::cout << cmd << std::endl;
+        std::cout << "state" << std::endl;
+        print_vector(q);
+        print_vector(dq);
+
+        throw_pretty("Torque is out of limits");
       }
     }
 
@@ -553,6 +566,8 @@ private:
 
     if (euclidean_distance(target_pos, robot.states().q) > max_distance ||
         inf_distance(target_pos, robot.states().q) > max_distance / 2.) {
+      print_vector(target_pos);
+      print_vector(robot.states().q);
       throw_pretty("Position is too far from current position");
     }
 
@@ -654,7 +669,8 @@ int main(int argc, char *argv[]) {
     std::cout << "=== [Subscriber] Wait for message." << std::endl;
 
     FlexivMsg::FlexivCmd cmd_msg;
-    FlexivMsg::FlexivState state_msg;
+    FlexivMsg::FlexivState state_msg, state_last_good_cmd;
+    std::vector<double> last_good_state;
 
     std::shared_ptr<Robot> robot;
 
@@ -685,13 +701,11 @@ int main(int argc, char *argv[]) {
     robot->get_state(state_msg);
     writer.write(state_msg);
     robot->get_cmd(cmd_msg);
-    std::cout << "First state msg is " << std::endl;
-    std::cout << state_msg << std::endl;
-
-    std::cout << "First cmd msg is" << std::endl;
-    std::cout << cmd_msg << std::endl;
-
+    state_last_good_cmd = state_msg;
     robot->send_cmd(cmd_msg);
+
+    std::cout << "First state msg is \n" << state_msg << std::endl;
+    std::cout << "First cmd msg is \n" << cmd_msg << std::endl;
 
     auto tic = std::chrono::high_resolution_clock::now();
     auto last_msg_time = std::chrono::high_resolution_clock::now();
@@ -713,7 +727,11 @@ int main(int argc, char *argv[]) {
                                                                 last_msg_time)
               .count() > stop_dt_if_no_msg_ms) {
 
-        robot->compute_default_cmd(state_msg, cmd_msg);
+        if (operation_mode == 2) {
+          robot->compute_default_cmd(state_last_good_cmd, cmd_msg);
+        } else if (operation_mode == 1) {
+          robot->compute_default_cmd(state_msg, cmd_msg);
+        }
 
         if (!warning_send) {
           std::cout << "No message received in " << stop_dt_if_no_msg_ms
@@ -748,6 +766,7 @@ int main(int argc, char *argv[]) {
            * Check if this sample has valid data. */
           if (info.valid()) {
             cmd_msg = msg;
+            state_last_good_cmd = state_msg; // save the last good state!
             last_msg_time = std::chrono::high_resolution_clock::now();
             if (!good_msg_send) {
               std::cout << "Good message received. Sending it to the robot"

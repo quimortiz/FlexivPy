@@ -127,3 +127,51 @@ class Controller_joint_example:
 
         return cmd
             
+class Controller_torque_example:
+    def __init__(self, robot_model, q0):
+
+
+        self.kImpedanceKp = [3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0]
+        self.kImpedanceKd = [80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0]
+
+        # self.scale = .4
+        self.scale = .2
+        self.kp = self.scale * np.array(self.kImpedanceKp)
+        self.kv = self.scale * np.array(self.kImpedanceKd)
+        self.q0 = q0
+        self.robot_model = robot_model
+
+        self.kLoopPeriod = 0.001;
+        # self.kSineAmp = 0.2;
+        self.kSineAmp = 0.0;
+        self.kSineFreq = 0.2;
+
+        self.loop_counter = 0
+
+    def get_control(self,state,robot_model):
+
+        target_pos = self.q0 + min(1.0 , np.exp(0.0001 * self.loop_counter) - 1. ) * self.kSineAmp * np.sin(2 * np.pi * self.kSineFreq * self.loop_counter * self.kLoopPeriod)
+        self.loop_counter += 1
+
+        # cmd = {
+        #     "tau_ff": np.zeros(7),
+        #     "q": target_pos,
+        #     "dq": np.zeros(7),
+        #     "kp": self.kp,
+        #     "kv":  self.kv,
+        #     "mode": 2,
+        # }
+
+        cmd = { "tau_ff": self.kp * (target_pos - state["q"]) - self.kv * state["dq"],
+            "q": state["q"],
+            "dq": np.zeros(7),
+            "kp": np.zeros(7),
+            "kv": np.zeros(7),
+             "mode": 2, }
+
+
+
+        return cmd
+
+
+

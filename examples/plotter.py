@@ -94,7 +94,8 @@ class SubscriberNode():
 
         self.subscribers = []
         self.readers = []
-        self.message_queue = [ deque(maxlen=self.messages_to_keep)   for _ in range(len(self.topic_names))]
+        self.message_queue =  deque(maxlen=self.messages_to_keep) 
+
 
 
         for topic_name, topic_type in zip(self.topic_names, self.topic_types):
@@ -126,6 +127,7 @@ class SubscriberNode():
         while time.time() - time_start < self.max_time_s:
             tic_loop = time.time()
 
+            all_msgs = []
             for i in range(len(self.topic_names)):
                 if tic_loop - time_last_msgs[i] > self.warning_dt:
                     if not warning_msg_send[i]:
@@ -137,7 +139,13 @@ class SubscriberNode():
                 if msg:
                     time_last_msgs[i] = time.time()
                     warning_msg_send[i] = False
-                    self.message_queue[i].append(msg)
+                    all_msgs.append(msg)
+                else:
+                    all_msgs.append(None)
+            self.message_queue.append(all_msgs)
+
+
+
 
             toc_loop = time.time()
 
@@ -150,6 +158,11 @@ class SubscriberNode():
                     print('warning: loop time {toc_loop-tic_loop} is greater than dt')
 
             time.sleep(max(0, self.dt - (toc_loop - tic_loop)))
+
+    def close(self):
+        """
+
+        """
 
 
 class QPlotter( SubscriberNode ):
@@ -190,7 +203,7 @@ class QUPlotter( SubscriberNode ):
 
         plt.ion()
         self.fig, self.ax = plt.subplots()
-        self.lines_q = [self.ax.plot([], [], label=f"q{i}", linestyle='-', marker='o', alpha=.5)[0] for i in range(7)]
+        self.lines_q = [self.ax.plot([], [], label=f"q{i}", linestyle='', marker='o', alpha=.5)[0] for i in range(7)]
         # Create the lines for q* and pair their colors with the corresponding q lines
         self.lines_qstar = []
         for i in range(7):
@@ -208,13 +221,13 @@ class QUPlotter( SubscriberNode ):
 
 
     def do(self):
-        if len(self.message_queue[0]):
+        if len(self.message_queue):
 
-            x = self.dt * np.arange(len(self.message_queue[0]))
+            x = self.dt * np.arange(len(self.message_queue))
             for i in range(7):
-                y = np.array( [msg.q[i] for msg in self.message_queue[0]])
+                y = np.array( [msg[0].q[i] if msg[0] else None for msg in self.message_queue])
                 self.lines_q[i].set_data(x[:len(y)], y)
-                y = np.array( [msg.q[i] for msg in self.message_queue[1]])
+                y = np.array( [msg[1].q[i] if msg[1] else None for msg in self.message_queue])
                 self.lines_qstar[i].set_data(x[:len(y)], y)
 
             self.ax.draw_artist(self.ax.patch)
@@ -262,7 +275,11 @@ if __name__ == "__main__":
     # plotter = QPlotter(topic_names= ["FlexivState"] , messages_to_keep=100,  topic_types=[FlexivState])
     # plotter.run()
 
-    logger = Logger(topic_names= ["FlexivState", "FlexivCmd"] , topic_types=[FlexivState, FlexivCmd])
+    # logger = Logger(topic_names= ["FlexivState", "FlexivCmd"] , topic_types=[FlexivState, FlexivCmd])
+    #
+
+    logger = QUPlotter(topic_names= ["FlexivState", "FlexivCmd"] , topic_types=[FlexivState, FlexivCmd])
+
     try:
         logger.run()
     finally:
