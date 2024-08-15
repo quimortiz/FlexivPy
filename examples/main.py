@@ -58,9 +58,9 @@ print_state_every = 500
 # controller = easy_controllers.Controller_static_q0(robot_model, config.get("q0", None))
 
 
-# controller = easy_controllers.Controller_joint_example(robot_model, config.get("q0", None))
+controller = easy_controllers.Controller_joint_example(robot_model, config.get("q0", None))
 
-controller = easy_controllers.Controller_torque_example(robot_model, config.get("q0", None))
+# controller = easy_controllers.Controller_torque_example(robot_model, config.get("q0", None))
 
 
 # controller = easy_controllers.Controller_joint_PD(robot_model)

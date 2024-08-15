@@ -5,8 +5,7 @@ from dataclasses import dataclass
 import cyclonedds.idl as idl
 import cyclonedds.idl.annotations as annotate
 import cyclonedds.idl.types as types
-from cyclonedds.idl.types import int64, float32, array, int32
-from cyclonedds.idl.types import int64, float32, sequence
+from cyclonedds.idl.types import int64, float32, array, int32, byte, sequence
 
 
 @dataclass
@@ -30,3 +29,15 @@ class FlexivState(idl.IdlStruct):
     dq: array[types.float64, 7]
     tau: array[types.float64, 7]
     timestamp: str
+
+
+# Define an IDL structure for the image data
+@dataclass
+@annotate.final
+@annotate.autoid("sequential")
+class FlexivImage(idl.IdlStruct):
+    # data: bytes
+    data: sequence[byte]
+    timestamp: str
+
+

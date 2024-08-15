@@ -13,6 +13,16 @@ import pinocchio as pin
 ASSETS_PATH = "FlexivPy/assets/"
 
 
+import cv2
+
+def view_image(image):
+    cv2.imshow(f"tmp sim robot", image)
+    while True:
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+    cv2.destroyWindow("tmp")
+
+
 class FlexivSim:
     def __init__(
         self,
@@ -23,9 +33,12 @@ class FlexivSim:
         gravity_comp=True,
         kv_damping=0.01,
         pin_model=None,
+        render_images=False,
+
     ):
 
         assert pin_model is not None
+        self.CV2 = None
 
         if xml_path is None:
             self.model = mujoco.MjModel.from_xml_path(
@@ -38,6 +51,10 @@ class FlexivSim:
         self.dt = dt
         _render_dt = 1.0 / 30.0
         self.render_ds_ratio = max(1, _render_dt // dt)
+        self.camera_render_dt = 1.0 / 10.
+        self.camera_render_ds_ratio = max(1, self.camera_render_dt // dt)
+        print("camera_render_ds_ratio", self.camera_render_ds_ratio)
+
         self.kv_damping = kv_damping
 
         if render:
@@ -73,6 +90,18 @@ class FlexivSim:
             if self.render:
                 self.viewer.sync()
 
+        if render_images:
+            import cv2
+            self.CV2 = cv2
+            # TODO: adpat this code to include more camera if desired!
+            self.camera_renderer = mujoco.Renderer(self.model, 480, 640)
+            self.camera_renderer.update_scene(self.data)
+            pixels = self.camera_renderer.render()
+            self.last_camera_image = cv2.cvtColor(pixels, cv2.COLOR_RGB2BGR).copy()
+        else:
+            self.camera_renderer = None
+
+
         print("robot sim is ready!")
 
     def read_config(self, file):
@@ -95,6 +124,19 @@ class FlexivSim:
         # TODO: is this necessary?
         if self.render and (self.step_counter % self.render_ds_ratio) == 0:
             self.viewer.sync()
+
+        if self.camera_renderer and (self.step_counter % self.camera_render_ds_ratio ) == 0:
+            self.camera_renderer.update_scene(self.data, camera="static_camera")
+            pixels = self.camera_renderer.render()
+            self.last_camera_image =  self.CV2.cvtColor(pixels, self.CV2.COLOR_RGB2BGR).copy()
+            # # lets show the image
+            # self.CV2.imshow("image in sim robot", self.last_camera_image)
+            # input('heere is the rendered image')
+            # view_image(self.last_camera_image)
+            # time.sleep(0.0001)
+
+
+
 
     def set_u(self):
         cmd = self.cmd

@@ -54,6 +54,7 @@ class Flexiv_client:
                 cmd += ["--render"]
             if server_config_file:
                 cmd += ["--config", server_config_file]
+            cmd += ["--render_images"]
             self.server_process = subprocess.Popen(cmd, env=os.environ.copy())
 
             time.sleep(0.01)

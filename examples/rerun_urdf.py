@@ -1,23 +1,8 @@
-import argparse
 import os
-import pathlib
-from typing import Optional
-
 import numpy as np
-import rerun as rr  # pip install rerun-sdk
-import scipy.spatial.transform as st
-import trimesh
-import trimesh.visual
-from PIL import Image
-from urdf_parser_py import urdf as urdf_parser
-
-import pinocchio as pin
-import hppfcl
+import rerun as rr  
 import time
-
-import pinocchio as pin
 from pinocchio.robot_wrapper import RobotWrapper
-
 import FlexivPy.robot.vis.rerunio as rerunio
 
 
@@ -45,7 +30,6 @@ if __name__ == "__main__":
 
         for j in range(7):
             rr.log(f"joint/q{j}", rr.Scalar(q[j]))
-
         time.sleep(dt)
 
 

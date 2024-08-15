@@ -25,10 +25,10 @@ robot = sim_robot.FlexivSim(
 )
 
 
-renderer = mujoco.Renderer(robot.model, 720, 1080)
+renderer = mujoco.Renderer(robot.model, 480, 640)
 renderer.update_scene(robot.data)
 
-camera_names = "camera_static"
+camera_names = ["static_camera"]
 for camera in camera_names:
     print(f"camera {camera}")
     renderer.update_scene(robot.data, camera=camera)
