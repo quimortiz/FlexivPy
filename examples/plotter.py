@@ -20,6 +20,10 @@ from cyclonedds.domain import DomainParticipant
 from cyclonedds.topic import Topic
 from FlexivPy.robot.dds.flexiv_messages import FlexivState, FlexivCmd
 
+import rerun as rr
+
+
+
 
 
 import math
@@ -81,7 +85,11 @@ def get_last_msg(reader, topic_type):
 
 class SubscriberNode():
 
-    def __init__(self, topic_names: str, topic_types,  dt: float = .1, max_time_s: float = float('inf'), warning_dt : float = .1, messages_to_keep: int =  1000):
+    def __init__(self, topic_names: List[str], topic_types,  dt: float = .1, max_time_s: float = float('inf'), warning_dt : float = .1, messages_to_keep: int =  1000):
+
+
+        if len(topic_names) != len(topic_types):
+            raise ValueError("topic_names and topic_types must have the same length")
 
         self.topic_names = topic_names
         self.topic_types = topic_types
@@ -194,6 +202,32 @@ class QPlotter( SubscriberNode ):
             self.fig.canvas.flush_events()
 
 
+class RerunioPlotter( SubscriberNode ):
+
+    def __init__(self, topic_names: List[str], topic_types: List[str],  dt: float = 1./20., max_time_s: float = float('inf'), warning_dt : float = .1, messages_to_keep: int =  1000):
+
+        super().__init__(topic_names=topic_names, topic_types=topic_types, dt=dt, max_time_s=max_time_s, warning_dt=warning_dt, messages_to_keep=1)
+
+        rr.init("cyclonedds_rerun_demo", spawn=True)
+
+
+    def do(self):
+        if len(self.message_queue[0]):
+            if self.message_queue[0][0]:
+                for i in range(7):
+                    rr.log(f"joint/q{i}", rr.Scalar(self.message_queue[0][0].q[i]
+                                                    + .01 * np.random.randn()  # Add some noise to the data
+                                                    ))
+            if self.message_queue[0][1]:
+                for i in range(7):
+                    rr.log(f"joint/q{i}_cmd", rr.Scalar(self.message_queue[0][1].q[i]
+                                                    + .01 * np.random.randn()  # Add some noise to the data
+
+                                                        ))
+
+
+
+
 class QUPlotter( SubscriberNode ):
 
     def __init__(self, topic_names: List[str], topic_types: List[str],  dt: float = 1./20., max_time_s: float = float('inf'), warning_dt : float = .1, messages_to_keep: int =  1000):
@@ -278,7 +312,11 @@ if __name__ == "__main__":
     # logger = Logger(topic_names= ["FlexivState", "FlexivCmd"] , topic_types=[FlexivState, FlexivCmd])
     #
 
-    logger = QUPlotter(topic_names= ["FlexivState", "FlexivCmd"] , topic_types=[FlexivState, FlexivCmd])
+    # logger = QUPlotter(topic_names= ["FlexivState", "FlexivCmd"] , topic_types=[FlexivState, FlexivCmd])
+    #
+    # logger = RerunioPlotter(topic_names= ["FlexivState"] , topic_types=[FlexivState])
+
+    logger = RerunioPlotter(topic_names= ["FlexivState", "FlexivCmd" ] , topic_types=[FlexivState, FlexivCmd])
 
     try:
         logger.run()
