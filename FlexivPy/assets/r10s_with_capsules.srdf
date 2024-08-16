@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<!--
+
+   UR-5 SRDF
+
+   This file is an alternative way of specifying semantics on the robot
+   structure.
+
+   It also provides:
+   - the set of interesting collision pairs
+
+  -->
+<robot name="rizon10s">
+
+  <disable_collisions link1="table" link2="base_link"/>
+  <disable_collisions link1="table" link2="link1"/>
+  <disable_collisions link1="table" link2="link2"/>
+
+
+  <disable_collisions link1="base_link" link2="link1"/>
+  <disable_collisions link1="base_link" link2="link2"/>
+  <disable_collisions link1="base_link" link2="link3"/>
+  <disable_collisions link1="base_link" link2="link4"/>
+
+
+  <disable_collisions link1="link1" link2="link2"/>
+  <disable_collisions link1="link1" link2="link3"/>
+  <disable_collisions link1="link1" link2="link4"/>
+
+
+
+
+  <disable_collisions link1="link2" link2="link3"/>
+  <disable_collisions link1="link2" link2="link4"/>
+
+  <disable_collisions link1="link3" link2="link4"/>
+  <disable_collisions link1="link3" link2="link5"/>
+
+  <disable_collisions link1="link4" link2="link5"/>
+  <disable_collisions link1="link4" link2="link6"/>
+
+  <disable_collisions link1="link5" link2="link6"/>
+  <disable_collisions link1="link6" link2="link7"/>
+
+
+
+
+
+
+
+</robot>

@@ -174,4 +174,96 @@ class Controller_torque_example:
         return cmd
 
 
+class GravityComp:
+    def __init__(self, robot_model, q0):
+
+
+        self.kImpedanceKp = [3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0]
+        self.kImpedanceKd = [80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0]
+
+        # self.scale = .4
+        self.scale = .5
+        self.kp = self.scale * np.array(self.kImpedanceKp)
+        self.kv = self.scale * np.array(self.kImpedanceKd)
+        self.q0 = q0
+        self.robot_model = robot_model
+
+
+        self.loop_counter = 0
+
+    def get_control(self,state,robot_model):
+
+            cmd = { "tau_ff": np.zeros(7),
+                "q": state["q"],
+                "dq": np.zeros(7),
+                "kp": np.zeros(7),
+                "kv": self.kv ,
+                 "mode": 2 }
+
+            return cmd
+
+class TaskSpaceImpedance():
+    def __init__(self, robot, s ):
+
+
+        frame_id = robot.model.getFrameId("flange")
+        print("frame id is ", frame_id)
+        T = robot.framePlacement( s['q'], frame_id, update_kinematics=True)
+        print("T is ", T)
+        p = T.translation
+        self.desired_pos = p
+        print('desired_pos:', self.desired_pos)
+        self.kp_task_space = np.array([1800, 10 , 1800])
+        self.kv_task_space =  np.array([200, 10, 200])
+        self.robot = robot
+        self.frame_id = frame_id
+        self.kImpedanceKd = np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+        self.kv_joint =  .1 * self.kImpedanceKd
+        self.kangular_vel  = 10
+
+    def get_control(self,state,robot_model):
+
+        q = state["q"]
+        dq  = state["dq"]
+        F_control = np.zeros(6)
+
+        # get the end effector postion
+
+        p = self.robot.framePlacement( q, self.frame_id, update_kinematics=True).translation
+
+        print('p:', p)
+
+        v = self.robot.frameVelocity( q, dq, self.frame_id, update_kinematics=True, reference_frame=pin.ReferenceFrame.LOCAL_WORLD_ALIGNED)
+
+        F_control[:3] = self.kp_task_space * (self.desired_pos - p) - self.kv_task_space * v.linear
+
+        F_control[3:] +=  - self.kangular_vel * v.angular
+
+        # print('F_control:', F_control)
+
+        # Compute the Jacobian in the world frame
+        J = pin.computeFrameJacobian(self.robot.model, 
+                                     self.robot.data,
+                                     np.array(q), self.frame_id, pin.ReferenceFrame.LOCAL_WORLD_ALIGNED)
+
+        # Compute the joint torques (tau) using the transpose of the Jacobian
+        tau = J.T @ F_control
+
+        # print('tau:', tau)
+
+        # tau += np.random.normal(0, 0.2, 7)
+        # tau[4] += 1.
+
+        cmd = {
+            "tau_ff": tau,
+            "q": state["q"],
+            "dq": np.zeros(7),
+            "kp": np.zeros(7),
+            "kv": self.kv_joint,
+            "mode": 2,
+        }
+
+        return cmd
+
+
 

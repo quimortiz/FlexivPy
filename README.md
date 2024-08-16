@@ -8,15 +8,15 @@ send last torque as a msg!
 # Experiments:
 
 - One joint: how high the gains.
-- Compare grav. compensation.
-- Urdf with better dynamical model.
+X Compare grav. compensation.
+NO Urdf with better dynamical model.
 - Task space impedance (moving one, rigid another)
 - Excert force without/with 
 - Force sensor - z axis control using measurement of force
-- More security checks.
+X More security checks.
 - Reaching task using Croccodyll
-- Rerun integration
-- Camera simulation 
+X Rerun integration
+X Camera simulation 
 - Camera in real
 - Vicon?/
 - Visual Markers with camera

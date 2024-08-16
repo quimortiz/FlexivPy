@@ -244,7 +244,7 @@ if __name__ == "__main__":
         q0=config.get("q0", None),
     )
 
-    robot_sim = sim_robot.FlexivSim( dt=dt, render=False, q0=q0, pin_model=robot_model.robot, render_images=args.render_images)
+    robot_sim = sim_robot.FlexivSim( dt=dt, render=args.render, q0=q0, pin_model=robot_model.robot, render_images=args.render_images)
 
     sim = FlexivSim_dds_server( robot_sim, dt, max_time=100.0)
 

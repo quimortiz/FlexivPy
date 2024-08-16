@@ -34,6 +34,23 @@
 #include <iostream>
 #include <sstream>
 
+#include "pinocchio/parsers/srdf.hpp"
+#include "pinocchio/parsers/urdf.hpp"
+
+#include "pinocchio/algorithm/geometry.hpp"
+
+#include "pinocchio/parsers/srdf.hpp"
+#include "pinocchio/parsers/urdf.hpp"
+
+#include "hpp/fcl/shape/geometric_shapes.h"
+#include "pinocchio/algorithm/frames.hpp"
+#include "pinocchio/algorithm/geometry.hpp"
+#include "pinocchio/multibody/fcl.hpp"
+
+#include "pinocchio/collision/collision.hpp"
+
+#include <atomic>
+
 /* Include the C++ DDS API. */
 #include "dds/dds.hpp"
 
@@ -257,6 +274,12 @@ struct RealRobot : Robot {
   flexiv::rdk::Mode robot_mode = flexiv::rdk::Mode::RT_JOINT_POSITION;
   flexiv::rdk::Scheduler scheduler;
   bool fake_commands = false;
+
+  pinocchio::Model model;
+  pinocchio::Data data;
+  pinocchio::GeometryData geom_data;
+  pinocchio::GeometryModel geom_model;
+
   // it true, we just print the commands to the screen.
 
   // this is called by the scheduler
@@ -329,7 +352,22 @@ struct RealRobot : Robot {
   RealRobot(std::string robot_serial_number, flexiv::rdk::Mode t_robot_mode,
             bool go_home)
       : robot(robot_serial_number) {
-    std::cout << "Real robot created" << std::endl;
+
+    std::string urdf =
+        "/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.urdf";
+    std::string srdf =
+        "/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.srdf";
+
+    pinocchio::urdf::buildModel(urdf, model);
+    data = pinocchio::Data(model);
+    pinocchio::urdf::buildGeom(model, urdf, pinocchio::COLLISION, geom_model);
+
+    geom_model.addAllCollisionPairs();
+    if (srdf != "") {
+      pinocchio::srdf::removeCollisionPairs(model, geom_model, srdf);
+    }
+
+    geom_data = pinocchio::GeometryData(geom_model);
 
     // Clear fault on the connected robot if any
     if (robot.fault()) {
@@ -393,9 +431,11 @@ struct RealRobot : Robot {
     tau_max.resize(7);
 
     for (size_t i = 0; i < 7; i++) {
-      tau_min[i] = -30.;
-      tau_max[i] = 30.;
+      tau_min[i] = -40.;
+      tau_max[i] = 40.;
     }
+
+    std::cout << "Real robot created" << std::endl;
   }
 
   void switch_mode_sync(flexiv::rdk::Mode t_robot_mode) {
@@ -421,6 +461,7 @@ private:
 
   std::vector<double> tau_min;
   std::vector<double> tau_max;
+  bool check_collisions = true;
 
   FlexivMsg::FlexivCmd
       _cmd; // just to avoid memory allocation. Do not use outside callback!
@@ -614,6 +655,18 @@ private:
     } else {
       throw_pretty("Vector size does not match array size!");
     }
+
+    if (check_collisions) {
+
+      Eigen::VectorXd _q = Eigen::VectorXd::Map(q.data(), q.size());
+
+      bool is_collision = pinocchio::computeCollisions(model, data, geom_model,
+                                                       geom_data, _q, true);
+
+      if (is_collision) {
+        throw_pretty("The current state is very close to collision!");
+      }
+    }
   }
 };
 
@@ -636,10 +689,10 @@ int main(int argc, char *argv[]) {
 
     std::cout << "=== [Subscriber] Create reader." << std::endl;
 
-    double dt = .001;
+    double dt = .9 * .001;
 
     double stop_dt_if_no_msg_ms = 100;
-    double max_time_s = 50;
+    double max_time_s = 1000;
     double dt_us = dt * 1e6;
 
     /* First, a domain participant is needed.

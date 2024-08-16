@@ -22,6 +22,7 @@ class FlexivModel:
         self.meshes_dir = meshes_dir
         if urdf is None:
             self.urdf = os.path.join(ASSETS_PATH, "flexiv_rizon10s_kinematics.urdf")
+            # self.urdf = os.path.join(ASSETS_PATH, "with_capsules.urdf")
         if meshes_dir is None:
             self.meshes_dir = os.path.join(ASSETS_PATH, "meshes")
 

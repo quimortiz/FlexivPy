@@ -28,7 +28,7 @@ robot_model = model_robot.FlexivModel(
     render=False,
     q0=config.get("q0", None),
 )
-
+ 
 server_process = None
 if args.mode == "sim_async":
     robot = robot_client.Flexiv_client(
@@ -58,9 +58,21 @@ print_state_every = 500
 # controller = easy_controllers.Controller_static_q0(robot_model, config.get("q0", None))
 
 
-controller = easy_controllers.Controller_joint_example(robot_model, config.get("q0", None))
+# controller = easy_controllers.Controller_joint_example(robot_model, config.get("q0", None))
 
 # controller = easy_controllers.Controller_torque_example(robot_model, config.get("q0", None))
+
+
+# controller = easy_controllers.GravityComp(robot_model, config.get("q0", None))
+
+# robot_model.display(np.array(config.get("q0", None))) 
+# input("Press Enter to continue...")
+
+
+
+
+
+
 
 
 # controller = easy_controllers.Controller_joint_PD(robot_model)
@@ -83,6 +95,12 @@ if  not robot_ready:
     raise ValueError("robot is not ready")
 else:
     print("robot is ready!")
+
+
+s = robot.getJointStates()
+controller = easy_controllers.TaskSpaceImpedance(
+                 robot =robot_model.robot, s=s)
+
 
 try:
     for i in range(1000 * simulation_time_s):
