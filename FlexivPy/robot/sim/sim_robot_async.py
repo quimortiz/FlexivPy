@@ -43,9 +43,11 @@ from cyclonedds.topic import Topic
 from cyclonedds.sub import Subscriber, DataReader
 from cyclonedds.util import duration
 import time
-from FlexivPy.robot.dds.flexiv_messages import FlexivCmd, FlexivState, FlexivImage
+from FlexivPy.robot.dds.flexiv_messages import FlexivCmd, FlexivState, EnvImage, EnvState
 
 import cv2
+
+from FlexivPy.robot.dds.subscriber import  get_last_msg
 
 def view_image(image):
     cv2.imshow(f"tmp-async", image)
@@ -73,6 +75,12 @@ class FlexivSim_dds_server:
         self.publisher = Publisher(self.domain_participant)
         self.writer = DataWriter(self.publisher, self.topic_state)
 
+        self.topic_env = Topic(self.domain_participant, "EnvState", EnvState)
+        self.publisher_env = Publisher(self.domain_participant)
+        self.writer_env = DataWriter(self.publisher_env, self.topic_env)
+
+
+
         # I also have to create a subscriber to receive the data
 
         self.topic_cmd = Topic(self.domain_participant, "FlexivCmd", FlexivCmd)
@@ -84,7 +92,7 @@ class FlexivSim_dds_server:
         if self.sim_robot.camera_renderer is not None:
             import cv2
             self.CV2 = cv2
-            self.topic_state_image = Topic(self.domain_participant, "FlexivImage", FlexivImage)
+            self.topic_state_image = Topic(self.domain_participant, "EnvImage", EnvImage)
             self.publisher_image = Publisher(self.domain_participant)
             self.writer_image = DataWriter(self.publisher_image, self.topic_state_image)
 
@@ -116,6 +124,8 @@ class FlexivSim_dds_server:
         while time.time() - time_start < self.max_time:
 
             tic = time.time()
+            now = datetime.now() # TODO: avoid calling tic twice
+            timestamp = now.strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]
 
             if tic - time_last_cmd > self.stop_dt:
                 time_last_cmd = time.time()
@@ -167,11 +177,22 @@ class FlexivSim_dds_server:
 
             self.sim_robot.step()
 
-            state = self.sim_robot.getJointStates()
+            state = self.sim_robot.get_robot_state()
             msg_out = FlexivState(
-                q=state["q"], dq=state["dq"], tau=np.zeros(7), timestamp=""
-            )
+                q=state["q"], dq=state["dq"], tau=np.zeros(7), timestamp=timestamp,
+                        g_state="",
+            g_moving=0.,
+            g_force=0.,
+            g_width=0.,)
             self.writer.write(msg_out)
+
+            env_state = self.sim_robot.get_env_state()
+            msg_out = EnvState( names=list(env_state.keys()),
+                poses=list(env_state.values()),
+                timestamp=timestamp
+            )
+
+            self.writer_env.write(msg_out)
 
 
             if self.sim_robot.camera_renderer is not None:
@@ -188,7 +209,7 @@ class FlexivSim_dds_server:
                         # Create an ImageData object and publish it
                         now = datetime.now()
                         timestamp = now.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-                        image_data = FlexivImage(data=image_bytes, timestamp=timestamp)
+                        image_data = EnvImage(data=image_bytes, timestamp=timestamp)
                         print('writing image!')
                         self.writer_image.write(image_data)
                         time_last_img  = tic
@@ -225,6 +246,7 @@ if __name__ == "__main__":
         "--config", type=str, default="FlexivPy/config/robot.yaml", help="config file"
     )
     argp.add_argument("--render_images", action="store_true", help="render images")
+    argp.add_argument("--xml_path", type=str, default=None, help="xml path")
 
     args = argp.parse_args()
 
@@ -236,15 +258,14 @@ if __name__ == "__main__":
     if q0:
         q0 = np.array(q0)
 
-    # I need a pinocchio robot
-
     dt = 0.001
     robot_model = model_robot.FlexivModel(
         render=False,
         q0=config.get("q0", None),
     )
 
-    robot_sim = sim_robot.FlexivSim( dt=dt, render=args.render, q0=q0, pin_model=robot_model.robot, render_images=args.render_images)
+    robot_sim = sim_robot.FlexivSim( dt=dt, render=args.render, 
+                  xml_path=args.xml_path, q0=q0, pin_model=robot_model.robot, render_images=args.render_images)
 
     sim = FlexivSim_dds_server( robot_sim, dt, max_time=100.0)
 

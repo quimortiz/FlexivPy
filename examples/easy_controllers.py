@@ -174,18 +174,72 @@ class Controller_torque_example:
         return cmd
 
 
-class GravityComp:
-    def __init__(self, robot_model, q0):
+
+class OpenCloseGripper:
+    def __init__(self, robot_model, s):
 
 
         self.kImpedanceKp = [3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0]
         self.kImpedanceKd = [80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0]
 
         # self.scale = .4
-        self.scale = .5
+        self.scale = .01
         self.kp = self.scale * np.array(self.kImpedanceKp)
         self.kv = self.scale * np.array(self.kImpedanceKd)
-        self.q0 = q0
+        self.robot_model = robot_model
+
+
+        self.loop_counter = 0
+
+    def get_control(self,state,robot_model , t):
+        """
+        time in seconds since start
+        """
+        gripper_state = state[ "g_state" ]
+        print('gripper state is', gripper_state)
+
+
+        if gripper_state == "open":
+            cmd = {
+                "tau_ff": np.zeros(7),
+                    "q": state["q"],
+                    "dq": np.zeros(7),
+                    "kp": np.zeros(7),
+                    "kv": self.kv ,
+                     "mode": 2 ,
+                    "g_cmd" : "close"
+            }
+            return cmd
+        if gripper_state == "closed":
+            cmd = {
+                "tau_ff": np.zeros(7),
+                    "q": state["q"],
+                    "dq": np.zeros(7),
+                    "kp": np.zeros(7),
+                    "kv": self.kv ,
+                     "mode": 2 ,
+                    "g_cmd" : "open"
+            }
+            return cmd
+        if gripper_state == "moving":
+            print("gripper is moving!")
+            return None
+
+
+
+
+
+class GravityComp:
+    def __init__(self, robot_model):
+
+
+        self.kImpedanceKp = [3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0]
+        self.kImpedanceKd = [80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0]
+
+        # self.scale = .4
+        self.scale = .01
+        self.kp = self.scale * np.array(self.kImpedanceKp)
+        self.kv = self.scale * np.array(self.kImpedanceKd)
         self.robot_model = robot_model
 
 

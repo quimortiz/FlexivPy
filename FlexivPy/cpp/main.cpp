@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <cmath>
+#include <flexiv/rdk/gripper.hpp>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -252,6 +253,15 @@ double euclidean_distance(const std::vector<double> &vec1,
   }
   return std::sqrt(dist);
 }
+// TODO: fix this mess!
+double euclidean_distance(const std::array<double, 7> &vec1,
+                          const std::array<double, 7> &vec2) {
+  double dist = 0;
+  for (size_t i = 0; i < vec1.size(); i++) {
+    dist += (vec1[i] - vec2[i]) * (vec1[i] - vec2[i]);
+  }
+  return std::sqrt(dist);
+}
 
 double inf_distance(const std::vector<double> &vec1,
                     const std::vector<double> &vec2) {
@@ -271,6 +281,7 @@ void print_vector(const std::vector<double> &vec) {
 
 struct RealRobot : Robot {
   flexiv::rdk::Robot robot;
+  flexiv::rdk::Gripper gripper;
   flexiv::rdk::Mode robot_mode = flexiv::rdk::Mode::RT_JOINT_POSITION;
   flexiv::rdk::Scheduler scheduler;
   bool fake_commands = false;
@@ -288,6 +299,7 @@ struct RealRobot : Robot {
   //
   void callback() {
     cmd_msg.get(_cmd);
+
     if (robot_mode == flexiv::rdk::Mode::RT_JOINT_POSITION) {
 
       // continue here!!
@@ -351,7 +363,7 @@ struct RealRobot : Robot {
 
   RealRobot(std::string robot_serial_number, flexiv::rdk::Mode t_robot_mode,
             bool go_home)
-      : robot(robot_serial_number) {
+      : robot(robot_serial_number), gripper(robot) {
 
     std::string urdf =
         "/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.urdf";
@@ -430,12 +442,30 @@ struct RealRobot : Robot {
     tau_min.resize(7);
     tau_max.resize(7);
 
+    // TODO: different torque limits per joint!!
     for (size_t i = 0; i < 7; i++) {
       tau_min[i] = -40.;
       tau_max[i] = 40.;
     }
 
     std::cout << "Real robot created" << std::endl;
+
+    // Instantiate gripper control interface
+
+    // Manually initialize the gripper, not all grippers need this step
+    spdlog::info(
+        "Initializing gripper, this process takes about 10 seconds ...");
+    gripper.Init();
+    spdlog::info("Initialization complete");
+
+    /*//non blocking!*/
+    /*spdlog::info("Closing gripper");*/
+    /*gripper.Move(0.01, 0.1, 20);*/
+    /**/
+    /*std::this_thread::sleep_for(std::chrono::seconds(2));*/
+    /*spdlog::info("Opening gripper");*/
+    /*gripper.Move(0.09, 0.1, 20);*/
+    /*std::this_thread::sleep_for(std::chrono::seconds(2));*/
   }
 
   void switch_mode_sync(flexiv::rdk::Mode t_robot_mode) {
@@ -447,21 +477,89 @@ struct RealRobot : Robot {
     state_msg.get(state);
   }
 
-  virtual void send_cmd(const FlexivMsg::FlexivCmd &cmd) override {
+
+  virtual void send_cmd(const FlexivMsg::FlexivCmd &t_cmd) override {
+
+    FlexivMsg::FlexivCmd cmd = t_cmd;
+
+    /*bool special_gripper_cmd = false;*/
+
+    if (gripper_available) {
+
+      if (!gripper.moving() && (_cmd.g_cmd() == std::string("open") ||
+                                _cmd.g_cmd() == std::string("close"))) {
+        state_msg.get(_state_stop_for_gripper);
+        std::cout << "stopping at current configuration for the gripper"
+                  << std::endl;
+
+        if (_cmd.g_cmd() == std::string("open")) {
+          spdlog::info("Opening gripper");
+          gripper.Move(0.09, 0.1, 20);
+          std::cout << "calling move" << std::endl;
+        } else if (_cmd.g_cmd() == std::string("close")) {
+          spdlog::info("Closing gripper");
+          gripper.Move(0.01, 0.1, 20);
+          std::cout << "calling move" << std::endl;
+        }
+
+        if (overwrite_user_cmd_when_gripper_moving) {
+          std::cout << "we overwrite the cmd " << std::endl;
+          compute_default_cmd(_state_stop_for_gripper, cmd);
+        }
+      }
+
+      if (gripper.moving()) {
+
+        if (overwrite_user_cmd_when_gripper_moving) {
+          std::cout << "gripper is moving, overriting cmd" << std::endl;
+          compute_default_cmd(_state_stop_for_gripper, cmd);
+
+          std::cout << "gripper is moving, overriting cmd" << std::endl;
+          compute_default_cmd(_state_stop_for_gripper, cmd);
+
+          FlexivMsg::FlexivState tmp_state;
+          state_msg.get(tmp_state);
+
+          if (euclidean_distance(_state_stop_for_gripper.q(), tmp_state.q()) >
+              .2) {
+            throw_pretty("The gripper is moving, but the stop state is too far "
+                         "from the current state");
+          }
+        }
+      }
+    }
+
     cmd_msg.update(cmd);
   }
+
+  virtual bool is_gripper_closed() {
+    return gripper.states().width < width_closed_ub;
+  }
+
+  double width_open_lb = .08;
+  double width_closed_ub = .06;
+
+  bool is_gripper_open() { return gripper.states().width > width_open_lb; }
+
+  bool is_gripper_moving() { return gripper.moving(); }
 
   virtual void get_cmd(FlexivMsg::FlexivCmd &cmd) override { cmd_msg.get(cmd); }
 
 private:
   SyncData<FlexivMsg::FlexivCmd> cmd_msg;
   SyncData<FlexivMsg::FlexivState> state_msg;
+  FlexivMsg::FlexivState _state_stop_for_gripper;
   std::vector<double> q_min;
   std::vector<double> q_max;
+  bool overwrite_user_cmd_when_gripper_moving = true;
+
 
   std::vector<double> tau_min;
   std::vector<double> tau_max;
   bool check_collisions = true;
+  bool gripper_available = true;
+
+  /*bool gripper_is_moving = false;*/
 
   FlexivMsg::FlexivCmd
       _cmd; // just to avoid memory allocation. Do not use outside callback!
@@ -474,6 +572,9 @@ private:
   double max_distance_vel = 7;
 
   virtual void _send_cmd_torque(const FlexivMsg::FlexivCmd &cmd) {
+
+    /*std::cout << "Sending torque command" << std::endl;*/
+    /*std::cout << cmd << std::endl;*/
 
     // TODO: Preallocate the vectors!
     std::vector<double> torque(7, 0);
@@ -655,6 +756,21 @@ private:
     } else {
       throw_pretty("Vector size does not match array size!");
     }
+    // add info about the gripper
+
+    if (gripper_available) {
+      state.g_moving() = is_gripper_moving();
+      state.g_force() = gripper.states().force;
+      state.g_width() = gripper.states().width;
+      if (is_gripper_moving())
+        state.g_state() = "moving";
+      else if (is_gripper_closed())
+        state.g_state() = "closed";
+      else if (is_gripper_open())
+        state.g_state() = "open";
+      else
+        state.g_state() = "unknown";
+    }
 
     if (check_collisions) {
 
@@ -833,6 +949,7 @@ int main(int argc, char *argv[]) {
 
       robot->send_cmd(cmd_msg);
       robot->get_state(state_msg);
+      /*std::cout << "writing state msg" << std::endl;*/
       writer.write(state_msg);
 
       int time_loop_us =

@@ -37,6 +37,8 @@ def get_last_msg(reader, topic_type):
         msg = last_msg[0]
         if type(msg) == topic_type:
             return msg
+        else:
+            return None
 
     else:
         return None

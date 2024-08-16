@@ -41,7 +41,6 @@ elif args.mode == "sim":
     robot = sim_robot.FlexivSim(
         render=args.render, q0=config.get("q0"), pin_model=robot_model.robot
     )
-    robot.reset_state(config.get("q0"), np.zeros(7))
 
 elif args.mode == "real":
     robot = robot_client.Flexiv_client( render=False, create_sim_server=False)
@@ -97,19 +96,27 @@ else:
     print("robot is ready!")
 
 
-s = robot.getJointStates()
-controller = easy_controllers.TaskSpaceImpedance(
-                 robot =robot_model.robot, s=s)
+s = robot.get_robot_state()
+# controller = easy_controllers.TaskSpaceImpedance(
+#                  robot =robot_model.robot, s=s)
+
+# controller = easy_controllers.GravityComp(robot_model)
+controller = easy_controllers.OpenCloseGripper(robot_model, s)
 
 
 try:
+    tic_start = time.time()
     for i in range(1000 * simulation_time_s):
 
+        print(f"step {i}")
         tic = time.time()
-        s = robot.getJointStates()
+        s = robot.get_robot_state()
+        senv = robot.get_env_state()
+        img = robot.get_env_image()
 
-        cmd = controller.get_control(s, robot_model.robot)
-        robot.set_cmd(cmd)
+        cmd = controller.get_control(s, robot_model.robot , tic_start - tic )
+        if cmd is not None:
+            robot.set_cmd(cmd)
 
         if args.mode == "sim":
             robot.step()  # note: in sim_async and real this does nothing!
@@ -119,13 +126,10 @@ try:
         if (toc - tic) > robot.dt and warn_time_dt:
             print(f"warning: loop time {toc-tic} is greater than dt")
 
-        time.sleep(max(0, robot.dt - (toc - tic)))
+        # time.sleep(max(0, robot.dt - (toc - tic)))
+        time.sleep(0.01)
 
-    robot.close()
-except Exception as e:
-    # 'e' contains the exception details
-    print(f"An error occurred: {e}")
 
-    print("Error in the loop")
-    # lets kill the async server if it was created
+finally:
     robot.close()
+

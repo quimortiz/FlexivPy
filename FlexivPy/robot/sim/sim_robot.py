@@ -23,6 +23,9 @@ def view_image(image):
     cv2.destroyWindow("tmp")
 
 
+
+
+
 class FlexivSim:
     def __init__(
         self,
@@ -34,8 +37,13 @@ class FlexivSim:
         kv_damping=0.01,
         pin_model=None,
         render_images=False,
+        object_names = []
 
     ):
+
+
+        self.joints = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
+
 
         assert pin_model is not None
         self.CV2 = None
@@ -56,6 +64,7 @@ class FlexivSim:
         print("camera_render_ds_ratio", self.camera_render_ds_ratio)
 
         self.kv_damping = kv_damping
+        self.object_names = object_names
 
         if render:
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
@@ -85,11 +94,11 @@ class FlexivSim:
 
         self.q0 = q0
         if self.q0 is not None:
-            print("q0 is", q0)
-            self.reset_state(q0, np.zeros(7))
+            self.reset_state_robot(q0, np.zeros(7))
             if self.render:
                 self.viewer.sync()
 
+        self.last_camera_image = None
         if render_images:
             import cv2
             self.CV2 = cv2
@@ -104,6 +113,23 @@ class FlexivSim:
 
         print("robot sim is ready!")
 
+
+    def get_robot_joints(self):
+        return np.array([self.data.joint(j).qpos[0] for j in self.joints])
+
+
+    def get_robot_vel(self):
+        return np.array([self.data.joint(j).qvel[0] for j in self.joints])
+
+    def set_robot_joints(self, q):
+        for i, j in enumerate(self.joints):
+            self.data.joint(j).qpos[0] = q[i]
+
+    def set_robot_vel(self, dq):
+        for i, j in enumerate(self.joints):
+            self.data.joint(j).qvel[0] = dq[i]
+
+
     def read_config(self, file):
         with open(file, "r") as stream:
             try:
@@ -111,9 +137,9 @@ class FlexivSim:
             except yaml.YAMLError as exc:
                 print(exc)
 
-    def reset_state(self, q, dq):
-        self.data.qpos = q
-        self.data.qvel = dq
+    def reset_state_robot(self, q, dq):
+        self.set_robot_joints(q)
+        self.set_robot_vel(dq)
         mujoco.mj_forward(self.model, self.data)
 
     def step(self):
@@ -142,17 +168,17 @@ class FlexivSim:
         cmd = self.cmd
         tau = (
             cmd["tau_ff"]
-            + cmd["kp"] * (cmd["q"] - self.data.qpos)
-            + cmd["kv"] * (cmd["dq"] - self.data.qvel)
+            + cmd["kp"] * (cmd["q"] - self.get_robot_joints())
+            + cmd["kv"] * (cmd["dq"] - self.get_robot_vel())
         )
 
         if self.gravity_comp:
             tau += pin.computeGeneralizedGravity(
-                self.pin_model.model, self.pin_model.data, self.data.qpos
-            )
+                self.pin_model.model, self.pin_model.data, 
+                self.get_robot_joints())
 
         if self.kv_damping > 0:
-            tau -= self.kv_damping * self.data.qvel
+            tau -= self.kv_damping * self.get_robot_vel()
 
         self.data.ctrl = tau
 
@@ -162,11 +188,24 @@ class FlexivSim:
         """
         self.cmd = cmd
 
-    def getJointStates(self):
-        return {"q": self.data.qpos, "dq": self.data.qvel}
+    def get_robot_state(self):
+        return {"q": self.get_robot_joints(), "dq": self.get_robot_vel()}
+
+
+    def get_env_image(self):
+        return self.last_camera_image
+        
+    def get_env_state(self):
+        # 
+        D = {}
+        for obj in self.object_names:
+            # q = data.joint("cube_j").qpos
+            D[obj] = np.concatenate([self.data.get_body_xpos(obj), self.data.get_body_xquat(obj)])
+        return D
+
 
     def is_ready(self):
-        return self.getJointStates() is not None
+        return self.get_robot_state() is not None
 
     def getPose(self):
         return self.data.qpos[:3], self.data.qpos[3:7]

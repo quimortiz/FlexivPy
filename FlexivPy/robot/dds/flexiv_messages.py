@@ -17,8 +17,9 @@ class FlexivCmd(idl.IdlStruct):
     dq: array[types.float64, 7]
     kp: array[types.float64, 7]
     kv: array[types.float64, 7]
-    timestamp: str
     mode: int32
+    g_cmd: str # "close", "open"
+    timestamp: str
 
 
 @dataclass
@@ -29,15 +30,31 @@ class FlexivState(idl.IdlStruct):
     dq: array[types.float64, 7]
     tau: array[types.float64, 7]
     timestamp: str
+    g_state: str
+    g_moving: bool
+    g_force: types.float64
+    g_width: types.float64
+
+
+
 
 
 # Define an IDL structure for the image data
 @dataclass
 @annotate.final
 @annotate.autoid("sequential")
-class FlexivImage(idl.IdlStruct):
+class EnvImage(idl.IdlStruct):
     # data: bytes
     data: sequence[byte]
     timestamp: str
+
+@dataclass
+@annotate.final
+@annotate.autoid("sequential")
+class EnvState(idl.IdlStruct):
+    names: sequence[str]
+    poses: sequence[array[types.float64, 7]]
+    timestamp: str
+
 
 
