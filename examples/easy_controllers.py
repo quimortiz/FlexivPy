@@ -213,8 +213,8 @@ class TaskSpaceImpedance():
         p = T.translation
         self.desired_pos = p
         print('desired_pos:', self.desired_pos)
-        self.kp_task_space = np.array([1800, 10 , 1800])
-        self.kv_task_space =  np.array([200, 10, 200])
+        self.kp_task_space = np.array([4000, 10 , 4000])
+        self.kv_task_space =  np.array([400, 10, 400])
         self.robot = robot
         self.frame_id = frame_id
         self.kImpedanceKd = np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])

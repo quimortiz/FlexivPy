@@ -689,7 +689,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "=== [Subscriber] Create reader." << std::endl;
 
-    double dt = .9 * .001;
+    double dt = .8 * .001;
 
     double stop_dt_if_no_msg_ms = 100;
     double max_time_s = 1000;
