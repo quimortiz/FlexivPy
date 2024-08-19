@@ -189,7 +189,15 @@ class FlexivSim:
         self.cmd = cmd
 
     def get_robot_state(self):
-        return {"q": self.get_robot_joints(), "dq": self.get_robot_vel()}
+        # todo: lets change this!!
+        return {"q": self.get_robot_joints(), "dq": self.get_robot_vel(),
+                # TODO: Change this, based on work of Alex
+                "g_state": "", 
+                "g_moving": False,
+                "g_force": -1,
+                "g_width": -1
+                }
+
 
 
     def get_env_image(self):

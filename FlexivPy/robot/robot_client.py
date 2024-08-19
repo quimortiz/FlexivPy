@@ -110,7 +110,7 @@ class Flexiv_client:
             dq=cmd["dq"],
             kp=cmd["kp"],
             kv=cmd["kv"],
-            g_cmd=cmd["g_cmd"],
+            g_cmd=cmd.get("g_cmd",""),
             timestamp=timestamp_str,
             mode=cmd["mode"],
         )
@@ -171,6 +171,9 @@ class Flexiv_client:
         msg = get_last_msg(self.reader, FlexivState)
         if msg:
             self.last_state = {"q": np.array(msg.q), "dq": np.array(msg.dq),
+                               "tau": np.array(msg.tau), 
+                               "ft_sensor": np.array(msg.ft_sensor),
+                               "timestamp": msg.timestamp,
                                 "g_state" : msg.g_state,
                                "g_moving" : msg.g_moving,
                                "g_force": msg.g_force,

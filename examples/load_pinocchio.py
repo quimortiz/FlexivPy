@@ -2,7 +2,11 @@ from FlexivPy.robot.model.model_robot import FlexivModel
 import numpy as np
 import pinocchio as pin
 
-robot = FlexivModel(render=True)
+
+
+
+urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.urdf"
+robot = FlexivModel(render=True, urdf=urdf)
 
 
 
@@ -10,6 +14,7 @@ q = np.array([0, -0.75, 0, 1.5, 0, 0.75, 0])
 
 robot.vizer.displayCollisions(True)
 robot.vizer.displayVisuals(True)
+robot.vizer.displayFrames(True)
 
 robot.display(q)
 
