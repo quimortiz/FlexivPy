@@ -1,5 +1,6 @@
 import time
 import mujoco
+import pinocchio as pin
 import mujoco.viewer
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -97,15 +98,28 @@ class FlexivSim_dds_server:
             self.writer_image = DataWriter(self.publisher_image, self.topic_state_image)
 
 
-        self.stop_dt = 0.01  # [s] if i don't receive a cmd in this time, stop the robot
+        self.stop_dt = 0.05 # [s] if i don't receive a cmd in this time, stop the robot
 
-        self.default_cmd = {
-            "tau_ff": np.zeros(7),
+    def compute_default_command(self):
+
+        if not self.sim_robot.gravity_comp:
+            default_tau_ff = pin.computeGeneralizedGravity(
+                self.sim_robot.pin_model.model, self.sim_robot.pin_model.data, 
+                self.sim_robot.get_robot_joints())
+        else:
+            default_tau_ff = np.zeros(7)
+        
+        default_cmd = {
+            "tau_ff": default_tau_ff,
             "q": np.zeros(7),
             "dq": np.zeros(7),
             "kp": np.zeros(7),
             "kv": 10.0 * np.ones(7),
+            "g_cmd": "open",
+            "mode": 2
         }
+
+        return default_cmd
 
     def run(self):
         time_start = time.time()
@@ -115,7 +129,7 @@ class FlexivSim_dds_server:
         warning_dt_send = False
 
         # we start with the default cmd
-        self.sim_robot.set_cmd(self.default_cmd)
+        self.sim_robot.set_cmd(self.compute_default_command())
         time_last_cmd = time.time()
 
         time_last_img = time.time()
@@ -129,7 +143,7 @@ class FlexivSim_dds_server:
 
             if tic - time_last_cmd > self.stop_dt:
                 time_last_cmd = time.time()
-                self.sim_robot.set_cmd(self.default_cmd)
+                self.sim_robot.set_cmd(self.compute_default_command())
                 if not warning_send:
                     print("no cmd recieved in time! -- using default cmd")
                     warning_send = True
@@ -172,18 +186,23 @@ class FlexivSim_dds_server:
                         "dq": cmd.dq,
                         "kp": cmd.kp,
                         "kv": cmd.kv,
+                        "g_cmd": cmd.g_cmd
                     }
                 )
+                # Modify
 
             self.sim_robot.step()
 
             state = self.sim_robot.get_robot_state()
             msg_out = FlexivState(
                 q=state["q"], dq=state["dq"], tau=np.zeros(7), timestamp=timestamp,
-                        g_state="",
+                        g_state=state["g_state"],
             g_moving=0.,
             g_force=0.,
             g_width=0.,)
+             # Modify
+
+
             self.writer.write(msg_out)
 
             env_state = self.sim_robot.get_env_state()
@@ -247,6 +266,10 @@ if __name__ == "__main__":
     )
     argp.add_argument("--render_images", action="store_true", help="render images")
     argp.add_argument("--xml_path", type=str, default=None, help="xml path")
+    argp.add_argument("--urdf", type=str, default=None, help="urdf path")
+    argp.add_argument("--meshes_dir", type=str, default=None, help="meshes directrory path")
+    argp.add_argument("--joints", type=str, nargs='+', default=None, help="Names of the joints")
+
 
     args = argp.parse_args()
 
@@ -262,10 +285,12 @@ if __name__ == "__main__":
     robot_model = model_robot.FlexivModel(
         render=False,
         q0=config.get("q0", None),
+        urdf=args.urdf,
+        meshes_dir=args.meshes_dir
     )
 
-    robot_sim = sim_robot.FlexivSim( dt=dt, render=args.render, 
-                  xml_path=args.xml_path, q0=q0, pin_model=robot_model.robot, render_images=args.render_images)
+    robot_sim = sim_robot.FlexivSim(dt=dt, render=args.render, xml_path=args.xml_path, q0=q0, 
+                                    pin_model=robot_model.robot, render_images=args.render_images, joints=args.joints, gravity_comp=False)
 
     sim = FlexivSim_dds_server( robot_sim, dt, max_time=100.0)
 
