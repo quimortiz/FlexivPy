@@ -27,7 +27,8 @@ with open(args.config, "r") as stream:
 robot_model = model_robot.FlexivModel(
     render=False,
     q0=config.get("q0", None),
-    urdf="/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.urdf"
+    # urdf="/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.urdf"
+    urdf="/home/quim/code/FlexivPy/FlexivPy/assets/flexiv_rizon10s_kinematics.urdf"
 )
  
 server_process = None
@@ -112,7 +113,7 @@ for frame in model.frames:
 
 q = s["q"]
 
-frame_id = model.getFrameId( "gripper_c_j" )
+frame_id = model.getFrameId( "flange" )
 
 print("joint_id", frame_id)
 
@@ -120,29 +121,36 @@ print("q", q)
 robot_model.robot.framePlacement(q, frame_id, update_kinematics=True)
 
 # robot_model.robot.updateFramePlacements(data)
-iMd = data.oMf[frame_id]
-print("iMd", iMd)
-p0 = iMd.translation
+try:
+    iMd = data.oMf[frame_id]
+    print("iMd", iMd)
+    p0 = iMd.translation
+except:
+    pass
 
 
 
 
 try:
     tic_start = time.time()
-    # controller = easy_controllers.GravityComp(robot_model,s,tic_start)
 
 
     # if False:
-    Tdes = np.array([[-1.,0.,0.],[0.,1.,0.],[0.,0.,-1.]])
-    R = pin.rpy.rpyToMatrix(.0,.0,.0)
-    Tdes = Tdes @ R
-    pdes = p0 + np.array([.00,-0.1,0.])
-    oMdes = pin.SE3(Tdes, pdes)
-    # controller = easy_controllers.EndEffPose2(robot_model.robot, s, oMdes, frame_id , tic_start)
+    try:
+        Tdes = np.array([[-1.,0.,0.],[0.,1.,0.],[0.,0.,-1.]])
+        R = pin.rpy.rpyToMatrix(.0,.0,.0)
+        Tdes = Tdes @ R
+        pdes = p0 + np.array([.01,-0.1,0.])
+        oMdes = pin.SE3(Tdes, pdes)
+    except:
+        pass
+
+    controller = easy_controllers.EndEffPose2(robot_model.robot, s, oMdes, frame_id , tic_start)
 
     # print('desired pos', p0)
-    controller = easy_controllers.ForceController(robot_model.robot, frame_id, desired_f = -3., desired_R = Tdes, desired_pos = p0)
+    # controller = easy_controllers.ForceController(robot_model.robot, frame_id, desired_f = -3., desired_R = Tdes, desired_pos = p0)
 
+    # controller = easy_controllers.GravityComp(robot_model,s,tic_start)
 
     for i in range(1000 * simulation_time_s):
 

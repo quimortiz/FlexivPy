@@ -31,7 +31,9 @@ import cv2
 class Flexiv_client:
     def __init__(
         self, dt=0.001, render=False, render_images=True, create_sim_server=False, server_config_file="",
-        xml_path=None, urdf=None, meshes_dir=None, joints=None
+        xml_path=None, urdf=None, meshes_dir=None, joints=None, 
+        base_path=""
+
     ):
 
         self.dt = dt
@@ -64,7 +66,7 @@ class Flexiv_client:
 
         if self.create_sim_server:
 
-            cmd = ["python", "FlexivPy/FlexivPy/robot/sim/sim_robot_async.py"]
+            cmd = ["python", base_path +  "FlexivPy/robot/sim/sim_robot_async.py"]
             if render:
                 cmd += ["--render"]
             if server_config_file:

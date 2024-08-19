@@ -38,10 +38,12 @@ class FlexivSim:
         pin_model=None,
         render_images=False,
         object_names = [],
-        joints = None
+        joints = None,
+        has_gripper=False
 
     ):
 
+        self.has_gripper = has_gripper
         if joints is None:
             self.joints = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
         else: 
@@ -197,10 +199,11 @@ class FlexivSim:
         if self.kv_damping > 0:
             tau -= self.kv_damping * self.get_robot_vel()
 
-        if cmd['g_cmd'] == 'close':
-            tau = np.append(tau, 255)
-        else:
-            tau = np.append(tau, 0)
+        if self.has_gripper:
+            if cmd['g_cmd'] == 'close':
+                tau = np.append(tau, 255)
+            else:
+                tau = np.append(tau, 0)
 
         self.data.ctrl = tau
 

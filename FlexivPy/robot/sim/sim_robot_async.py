@@ -270,6 +270,10 @@ if __name__ == "__main__":
     argp.add_argument("--meshes_dir", type=str, default=None, help="meshes directrory path")
     argp.add_argument("--joints", type=str, nargs='+', default=None, help="Names of the joints")
 
+    argp.add_argument("--no_gravity_comp", action="store_true", help="render the simulation")
+
+
+
 
     args = argp.parse_args()
 
@@ -290,7 +294,7 @@ if __name__ == "__main__":
     )
 
     robot_sim = sim_robot.FlexivSim(dt=dt, render=args.render, xml_path=args.xml_path, q0=q0, 
-                                    pin_model=robot_model.robot, render_images=args.render_images, joints=args.joints, gravity_comp=False)
+                                    pin_model=robot_model.robot, render_images=args.render_images, joints=args.joints, gravity_comp= not args.no_gravity_comp)
 
     sim = FlexivSim_dds_server( robot_sim, dt, max_time=100.0)
 
