@@ -14,6 +14,7 @@ module FlexivMsg {
         double q[7];
         double dq[7];
         double tau[7];
+        double ft_sensor[6];
         string timestamp;
         string g_state;
         boolean g_moving;

@@ -1,6 +1,7 @@
 from enum import auto
 from typing import TYPE_CHECKING, Optional
 from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import cyclonedds.idl as idl
 import cyclonedds.idl.annotations as annotate
@@ -29,11 +30,12 @@ class FlexivState(idl.IdlStruct):
     q: array[types.float64, 7]
     dq: array[types.float64, 7]
     tau: array[types.float64, 7]
-    timestamp: str
-    g_state: str
-    g_moving: bool
-    g_force: types.float64
-    g_width: types.float64
+    ft_sensor: array[types.float64, 6] = field(default_factory=lambda: [.0, .0, .0, .0, .0, .0])
+    timestamp: str = ""
+    g_state: str = ""
+    g_moving: bool = False
+    g_force: types.float64 = -1
+    g_width: types.float64 = -1
 
 
 

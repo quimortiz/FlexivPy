@@ -12,6 +12,13 @@
 #include <string>
 #include <thread>
 
+#include "pinocchio/algorithm/rnea.hpp"
+#include "pinocchio/multibody/data.hpp"
+
+#include <flexiv/rdk/model.hpp>
+
+// TODO: use their approach to terminate the callback!!
+
 /*
  * Copyright(c) 2006 to 2021 ZettaScale Technology and others
  *
@@ -68,6 +75,8 @@ const std::vector<double> kImpedanceKp = {3000.0, 3000.0, 800.0, 800.0,
 
 const std::vector<double> kImpedanceKd = {80.0, 80.0, 40.0, 40.0,
                                           8.0,  8.0,  8.0};
+
+std::atomic<bool> g_stop_sched = {false};
 
 // Helper function to format the error message with file, line, and function
 // details
@@ -263,6 +272,14 @@ double euclidean_distance(const std::array<double, 7> &vec1,
   return std::sqrt(dist);
 }
 
+template <typename T> double inf_norm(const T &vec) {
+  double norm = 0;
+  for (auto &v : vec) {
+    norm = std::max(norm, std::abs(v));
+  }
+  return norm;
+}
+
 double inf_distance(const std::vector<double> &vec1,
                     const std::vector<double> &vec2) {
   double dist = 0;
@@ -283,8 +300,10 @@ struct RealRobot : Robot {
   flexiv::rdk::Robot robot;
   flexiv::rdk::Gripper gripper;
   flexiv::rdk::Mode robot_mode = flexiv::rdk::Mode::RT_JOINT_POSITION;
-  flexiv::rdk::Scheduler scheduler;
+  std::unique_ptr<flexiv::rdk::Scheduler> scheduler;
   bool fake_commands = false;
+  bool grav_comp_with_pinocchio = true; // TODO: with grav comp in pinocchio,
+  // i have observed some issues if the scheduler fails!
 
   pinocchio::Model model;
   pinocchio::Data data;
@@ -298,36 +317,48 @@ struct RealRobot : Robot {
   //
   //
   void callback() {
-    cmd_msg.get(_cmd);
 
-    if (robot_mode == flexiv::rdk::Mode::RT_JOINT_POSITION) {
+    try {
 
-      // continue here!!
-      // use mode to indicate the type of control!
-      if (_cmd.mode() != 1) {
-        throw_pretty("we are in Joint Position mode, but the command is not of "
-                     "type Joint Position");
+      cmd_msg.get(_cmd);
+
+      if (robot_mode == flexiv::rdk::Mode::RT_JOINT_POSITION) {
+
+        if (_cmd.mode() != 1) {
+
+          throw_pretty(
+              "we are in Joint Position mode, but the command is not of "
+              "type Joint Position");
+        }
+        _send_cmd_position(_cmd);
+      } else if (robot_mode == flexiv::rdk::Mode::RT_JOINT_TORQUE) {
+
+        if (_cmd.mode() != 2) {
+
+          throw_pretty("we are in Joint Torque mode, but the command is not of "
+                       "type Joint Torque");
+        }
+
+        _send_cmd_torque(_cmd);
+      } else {
+
+        throw_pretty("Mode not implemented");
       }
-      _send_cmd_position(_cmd);
-    } else if (robot_mode == flexiv::rdk::Mode::RT_JOINT_TORQUE) {
-
-      if (_cmd.mode() != 2) {
-        throw_pretty("we are in Joint Torque mode, but the command is not of "
-                     "type Joint Torque");
-      }
-
-      _send_cmd_torque(_cmd);
-    } else {
-      throw_pretty("Mode not implemented");
+      _get_state(_state);
+      state_msg.update(_state);
+    } catch (const std::exception &e) {
+      spdlog::error(e.what());
+      g_stop_sched = true;
     }
-    _get_state(_state);
-    state_msg.update(_state);
   }
 
   virtual void start() override {
-    scheduler.AddTask([&] { this->callback(); }, "General Task", 1,
-                      scheduler.max_priority());
-    scheduler.Start();
+    scheduler = std::make_unique<flexiv::rdk::Scheduler>();
+    switch_mode_sync(flexiv::rdk::Mode::RT_JOINT_TORQUE);
+    /*scheduler = flexiv::rdk::Scheduler();*/
+    scheduler->AddTask([&] { this->callback(); }, "General Task", 1,
+                       scheduler->max_priority());
+    scheduler->Start();
   }
 
   virtual void compute_default_cmd(const FlexivMsg::FlexivState &state,
@@ -342,7 +373,7 @@ struct RealRobot : Robot {
     } else if (robot_mode == flexiv::rdk::Mode::RT_JOINT_TORQUE) {
       cmd.mode() = 2;
 
-      double scaling_kp = .4;
+      double scaling_kp = 1.;
       double scaling_kv = 1.;
 
       std::vector<double> t_kImpedanceKp = kImpedanceKp;
@@ -355,11 +386,19 @@ struct RealRobot : Robot {
       std::copy(t_kImpedanceKd.begin(), t_kImpedanceKd.end(), cmd.kv().begin());
 
     } else {
+
       throw_pretty("Mode not implemented");
     }
   }
 
-  virtual void stop() override { scheduler.Stop(); }
+  virtual void stop() override {
+    std::cout << "stopping scheduler" << std::endl;
+    scheduler->Stop();
+    std::cout << "stopping robot" << std::endl;
+    robot.Stop();
+    std::cout << "stopping gripper" << std::endl;
+    gripper.Stop();
+  }
 
   RealRobot(std::string robot_serial_number, flexiv::rdk::Mode t_robot_mode,
             bool go_home)
@@ -399,7 +438,7 @@ struct RealRobot : Robot {
 
     // Wait for the robot to become operational
     while (!robot.operational()) {
-      std::this_thread::sleep_for(std::chrono::seconds(1));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     spdlog::info("Robot is now operational");
 
@@ -411,16 +450,93 @@ struct RealRobot : Robot {
 
       // Wait for the primitive to finish
       while (robot.busy()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
     }
 
-    switch_mode_sync(t_robot_mode);
+    // check if i can compute gravity compensation term.
+
+    if (false) {
+      auto _q = robot.states().q;
+      auto q = Eigen::VectorXd::Map(_q.data(), _q.size());
+      std::cout << "q: " << q.transpose() << std::endl;
+      pinocchio::computeGeneralizedGravity(model, data, q);
+      std::cout << "Pinocchio grav. compensation:" << data.g.transpose()
+                << std::endl;
+
+      flexiv::rdk::Model f_model(robot);
+
+      std::vector<double> qv(q.data(), q.data() + q.size());
+      std::vector<double> vel(7, 0.);
+
+      f_model.Update(qv, vel);
+
+      // Compute gravity vector
+      auto g = f_model.g();
+
+      std::cout << "g from them " << g.transpose() << std::endl;
+
+      std::cout << "Diference" << std::endl;
+      std::cout << g - data.g << std::endl;
+
+      Eigen::VectorXd relative_difference =
+          (g - data.g).cwiseAbs().cwiseQuotient(g.cwiseAbs());
+      std::cout << relative_difference << std::endl;
+    }
+
+    auto bounds =
+        adjust_limits_interval(.02, robot.info().q_min, robot.info().q_max);
+
+    std::cout << "tau max from robot is " << std::endl;
+    print_vector(robot.info().tau_max);
+
+    q_min = bounds.first;
+    q_max = bounds.second;
+
+    tau_min.resize(7);
+    tau_max.resize(7);
+
+    // Tau max from robot is:
+    /*261 261 123 123 57 57 57 */
+    tau_max = {100, 100, 50, 50, 30, 30, 30};
+    for (size_t i = 0; i < 7; i++) {
+      tau_min[i] = -tau_max[i];
+    }
+    std::cout << "we limit tau to" << std::endl;
+    print_vector(tau_max);
+    print_vector(tau_min);
+
+    std::cout << "Real robot created" << std::endl;
+
+    // Instantiate gripper control interface
+
+    // Manually initialize the gripper, not all grippers need this step
+    spdlog::info(
+        "Initializing gripper, this process takes about 10 seconds ...");
+    gripper.Init();
+    spdlog::info("Initialization complete");
+    last_gripper_time = std::chrono::system_clock::now();
+
+
+    spdlog::info("make sure that the gripper is " + initial_gripper_state);
+
+    if (initial_gripper_state == "open")
+      gripper.Move(gripper_width_open, gripper_velocity, gripper_max_force);
+    else if (initial_gripper_state == "closed")
+      gripper.Move(gripper_width_close, gripper_velocity, gripper_max_force);
+    else {
+      throw_pretty("Unknown gripper state");
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    spdlog::info("Gripper open -- lets go to the main control loop!");
 
     // Set initial joint positions
     auto init_pos = robot.states().q;
     spdlog::info("Initial joint positions set to: {}",
                  flexiv::rdk::utility::Vec2Str(init_pos));
+
+    robot_mode = t_robot_mode;
 
     FlexivMsg::FlexivState tmp_state;
     FlexivMsg::FlexivCmd tmp_cmd;
@@ -433,39 +549,6 @@ struct RealRobot : Robot {
 
     state_msg.update(tmp_state);
     cmd_msg.update(tmp_cmd);
-
-    auto bounds =
-        adjust_limits_interval(.02, robot.info().q_min, robot.info().q_max);
-    q_min = bounds.first;
-    q_max = bounds.second;
-
-    tau_min.resize(7);
-    tau_max.resize(7);
-
-    // TODO: different torque limits per joint!!
-    for (size_t i = 0; i < 7; i++) {
-      tau_min[i] = -40.;
-      tau_max[i] = 40.;
-    }
-
-    std::cout << "Real robot created" << std::endl;
-
-    // Instantiate gripper control interface
-
-    // Manually initialize the gripper, not all grippers need this step
-    spdlog::info(
-        "Initializing gripper, this process takes about 10 seconds ...");
-    gripper.Init();
-    spdlog::info("Initialization complete");
-
-    /*//non blocking!*/
-    /*spdlog::info("Closing gripper");*/
-    /*gripper.Move(0.01, 0.1, 20);*/
-    /**/
-    /*std::this_thread::sleep_for(std::chrono::seconds(2));*/
-    /*spdlog::info("Opening gripper");*/
-    /*gripper.Move(0.09, 0.1, 20);*/
-    /*std::this_thread::sleep_for(std::chrono::seconds(2));*/
   }
 
   void switch_mode_sync(flexiv::rdk::Mode t_robot_mode) {
@@ -477,46 +560,56 @@ struct RealRobot : Robot {
     state_msg.get(state);
   }
 
-
   virtual void send_cmd(const FlexivMsg::FlexivCmd &t_cmd) override {
 
+    // rewrite this so that i have a small state machine!!
+    // Openning, Open, Closing, Close,
+    // Openning and Closing are moving.
+    //
+    //
+
+    // update the moving status
+
     FlexivMsg::FlexivCmd cmd = t_cmd;
-
-    /*bool special_gripper_cmd = false;*/
-
     if (gripper_available) {
-
-      if (!gripper.moving() && (_cmd.g_cmd() == std::string("open") ||
-                                _cmd.g_cmd() == std::string("close"))) {
-        state_msg.get(_state_stop_for_gripper);
-        std::cout << "stopping at current configuration for the gripper"
-                  << std::endl;
-
-        if (_cmd.g_cmd() == std::string("open")) {
-          spdlog::info("Opening gripper");
-          gripper.Move(0.09, 0.1, 20);
-          std::cout << "calling move" << std::endl;
-        } else if (_cmd.g_cmd() == std::string("close")) {
-          spdlog::info("Closing gripper");
-          gripper.Move(0.01, 0.1, 20);
-          std::cout << "calling move" << std::endl;
-        }
-
-        if (overwrite_user_cmd_when_gripper_moving) {
-          std::cout << "we overwrite the cmd " << std::endl;
-          compute_default_cmd(_state_stop_for_gripper, cmd);
-        }
+      if (gripper_openning && is_gripper_open()) {
+        spdlog::info("gripper was openning and now is open");
+        gripper_openning = false;
+        // TODO: should I call stop?
       }
 
-      if (gripper.moving()) {
+      if (gripper_closing && is_gripper_closed()) {
+        spdlog::info("gripper was closing and now is closed");
+        gripper_closing = false;
+        // TODO: should I call stop?
+      }
 
+      gripper_moving = gripper_openning || gripper_closing;
+
+      if (is_gripper_closed() && t_cmd.g_cmd() == std::string("close")) {
+        // do nothing
+      }
+
+      else if (!gripper_moving && !is_gripper_open() &&
+               t_cmd.g_cmd() == std::string("open")) {
+        gripper.Move(gripper_width_open, gripper_velocity, gripper_max_force);
+        std::cout << "Opening gripper..." << std::endl;
+        gripper_openning = true;
+        spdlog::info("updating _state_stop_for_gripper");
+        state_msg.get(_state_stop_for_gripper);
+      }
+
+      else if (!is_gripper_closed() && t_cmd.g_cmd() == std::string("close")) {
+        gripper.Move(gripper_width_close, gripper_velocity, gripper_max_force);
+        gripper_closing = true;
+        spdlog::info("start closing motion: updating _state_stop_for_gripper");
+        state_msg.get(_state_stop_for_gripper);
+      }
+
+      if (gripper_openning || gripper_closing) {
         if (overwrite_user_cmd_when_gripper_moving) {
           std::cout << "gripper is moving, overriting cmd" << std::endl;
-          compute_default_cmd(_state_stop_for_gripper, cmd);
-
-          std::cout << "gripper is moving, overriting cmd" << std::endl;
-          compute_default_cmd(_state_stop_for_gripper, cmd);
-
+          compute_default_cmd(_state_stop_for_gripper, _cmd);
           FlexivMsg::FlexivState tmp_state;
           state_msg.get(tmp_state);
 
@@ -529,30 +622,47 @@ struct RealRobot : Robot {
       }
     }
 
+    /*spdlog::info("Sending command to robot");*/
+    /*std::cout << cmd << std::endl;*/
     cmd_msg.update(cmd);
   }
 
   virtual bool is_gripper_closed() {
-    return gripper.states().width < width_closed_ub;
+    // TODO: force based check!
+    return gripper.states().width < gripper_width_close + delta_width;
   }
 
-  double width_open_lb = .08;
-  double width_closed_ub = .06;
-
-  bool is_gripper_open() { return gripper.states().width > width_open_lb; }
+  bool is_gripper_open() {
+    // TODO: force based check!
+    return gripper.states().width > gripper_width_open - delta_width;
+  }
 
   bool is_gripper_moving() { return gripper.moving(); }
 
   virtual void get_cmd(FlexivMsg::FlexivCmd &cmd) override { cmd_msg.get(cmd); }
 
 private:
+  std::string initial_gripper_state = "closed";
+
+  bool q_gripper_is_moving = false;
+  std::chrono::time_point<std::chrono::system_clock> last_gripper_time;
+  double gripper_dt_s = .01;
+  double gripper_max_force = 20;
+  double gripper_velocity = 0.1;
+  double gripper_width_open = 0.09;
+  double gripper_width_close = 0.02;
+  double delta_width = .001;
+
+  bool gripper_moving = false;
+  bool gripper_openning = false;
+  bool gripper_closing = false;
+
   SyncData<FlexivMsg::FlexivCmd> cmd_msg;
   SyncData<FlexivMsg::FlexivState> state_msg;
   FlexivMsg::FlexivState _state_stop_for_gripper;
   std::vector<double> q_min;
   std::vector<double> q_max;
   bool overwrite_user_cmd_when_gripper_moving = true;
-
 
   std::vector<double> tau_min;
   std::vector<double> tau_max;
@@ -569,7 +679,6 @@ private:
   double max_norm_vel = 6;
   double max_norm_acc = 2;
   double max_distance = .3;
-  double max_distance_vel = 7;
 
   virtual void _send_cmd_torque(const FlexivMsg::FlexivCmd &cmd) {
 
@@ -585,25 +694,36 @@ private:
     std::vector<double> target_vel(cmd.dq().begin(), cmd.dq().end());
 
     // check that q is close the current position
-    if (euclidean_distance(target_pose, robot.states().q) > max_distance ||
-        inf_distance(q, robot.states().q) > max_distance / 2.) {
-      std::cout << "ERROR" << std::endl;
-      print_vector(target_pose);
-      print_vector(robot.states().q);
-      throw_pretty("Position is too far from current position");
+
+    if (inf_norm(cmd.kp()) > 1e-6) {
+      if (euclidean_distance(target_pose, robot.states().q) > max_distance ||
+          inf_distance(q, robot.states().q) > max_distance / 2.) {
+        std::cout << "ERROR" << std::endl;
+        print_vector(target_pose);
+        print_vector(robot.states().q);
+
+        /*robot.Stop();*/
+        throw_pretty("Position is too far from current position");
+      }
     }
 
     if (euclidean_norm(target_vel) > max_norm_vel ||
         inf_norm(target_vel) > max_norm_vel / 2.) {
+
+      /*robot.Stop();*/
       throw_pretty("Velocity norm is too high");
     }
 
     if (q.size() != 7 || dq.size() != 7 || torque.size() != 7) {
+
+      /*robot.Stop();*/
       throw_pretty("Vector size does not match array size!");
     }
 
     if (cmd.tau_ff().size() != 7 || cmd.kp().size() != 7 ||
         cmd.kv().size() != 7 || cmd.q().size() != 7 || cmd.dq().size() != 7) {
+
+      /*robot.Stop();*/
       throw_pretty("Vector size does not match array size!");
     }
 
@@ -618,6 +738,8 @@ private:
 
     for (auto &i : torque) {
       if (std::isnan(i) || std::isinf(i)) {
+
+        /*robot.Stop();*/
         throw_pretty("Nan in torque");
       }
     }
@@ -625,6 +747,8 @@ private:
     for (size_t i = 0; i < torque.size(); i++) {
       if (torque[i] < tau_min[i] or torque[i] > tau_max[i]) {
         print_vector(torque);
+
+        std::cout << "Torque exceded limits at joint" << std::endl;
         std::cout << "i: " << i << " " << torque[i] << " " << tau_min[i] << " "
                   << tau_max[i] << std::endl;
         std::cout << "cmd " << std::endl;
@@ -633,6 +757,7 @@ private:
         print_vector(q);
         print_vector(dq);
 
+        /*robot.Stop();*/
         throw_pretty("Torque is out of limits");
       }
     }
@@ -643,7 +768,32 @@ private:
       print_vector(torque);
       return;
     } else {
-      robot.StreamJointTorque(torque);
+
+      if (grav_comp_with_pinocchio) {
+        // compute gravity compenstation with pinocchio
+        pinocchio::computeGeneralizedGravity(
+            model, data, Eigen::VectorXd::Map(q.data(), q.size()));
+
+        std::vector<double> final_torque = torque;
+        for (size_t i = 0; i < 7; i++) {
+          final_torque[i] += data.g[i];
+        }
+
+        /*std::cout << "final torque would be " << std::endl;*/
+        /*print_vector(final_torque);*/
+        /*robot.StreamJointTorque(torque, false);*/
+
+        /*spdlog::info("sending torque");*/
+        /*print_vector(torque);*/
+        robot.StreamJointTorque(final_torque, false);
+      }
+
+      else {
+
+        /*spdlog::info("sending torque");*/
+        /*print_vector(torque);*/
+        robot.StreamJointTorque(torque);
+      }
     }
 
     // check that the torque is inside limits
@@ -658,12 +808,16 @@ private:
     if (cmd.q().size() == target_pos.size()) {
       std::copy(cmd.q().begin(), cmd.q().end(), target_pos.begin());
     } else {
+
+      /*robot.Stop();*/
       throw_pretty("Vector size does not match array size!");
     }
 
     if (cmd.dq().size() == target_vel.size()) {
       std::copy(cmd.dq().begin(), cmd.dq().end(), target_vel.begin());
     } else {
+
+      /*robot.Stop();*/
       throw_pretty("Vector size does not match array size!");
     }
 
@@ -671,6 +825,8 @@ private:
 
     if (q_min.size() != target_pos.size() ||
         q_max.size() != target_pos.size()) {
+
+      /*robot.Stop();*/
       throw_pretty("Vector size does not match array size!");
     }
 
@@ -688,21 +844,29 @@ private:
 
     for (auto &i : target_vel) {
       if (std::isnan(i) or std::isinf(i)) {
+
+        /*robot.Stop();*/
         throw_pretty("Nan in target velocity");
       }
     }
 
     for (auto &i : target_acc) {
       if (std::isnan(i) or std::isinf(i)) {
+
+        /*robot.Stop();*/
         throw_pretty("Nan in target acceleration");
       }
     }
 
     if (euclidean_norm(target_vel) > max_norm_vel) {
+
+      /*robot.Stop();*/
       throw_pretty("Velocity norm is too high");
     }
 
     if (euclidean_norm(target_acc) > max_norm_acc) {
+
+      /*robot.Stop();*/
       throw_pretty("Acceleration norm is too high");
     }
 
@@ -710,6 +874,8 @@ private:
         inf_distance(target_pos, robot.states().q) > max_distance / 2.) {
       print_vector(target_pos);
       print_vector(robot.states().q);
+
+      /*robot.Stop();*/
       throw_pretty("Position is too far from current position");
     }
 
@@ -743,8 +909,10 @@ private:
     std::string time = get_current_timestamp();
     state.timestamp(time);
 
-    auto q = robot.states().q;
-    auto dq = robot.states().dtheta;
+    auto& q = robot.states().q;
+    auto& dq = robot.states().dtheta;
+    auto& tau = robot.states().tau;
+    auto& ft_sensor = robot.states().ft_sensor_raw;
 
     if (q.size() == state.q().size()) {
       std::copy(q.begin(), q.end(), state.q().begin());
@@ -754,22 +922,40 @@ private:
     if (dq.size() == state.dq().size()) {
       std::copy(dq.begin(), dq.end(), state.dq().begin());
     } else {
+
+      /*robot.Stop();*/
       throw_pretty("Vector size does not match array size!");
     }
+    if (tau.size() == state.tau().size()) {
+      std::copy(tau.begin(), tau.end(), state.tau().begin());
+    } else {
+      throw_pretty("Vector size does not match array size!");
+    }
+
+    if (ft_sensor.size() == state.ft_sensor().size()) {
+      std::copy(ft_sensor.begin(), ft_sensor.end(), state.ft_sensor().begin());
+    } else {
+      throw_pretty("Vector size does not match array size!");
+    }
+
+
     // add info about the gripper
 
     if (gripper_available) {
-      state.g_moving() = is_gripper_moving();
+      state.g_moving() = gripper.moving();
       state.g_force() = gripper.states().force;
       state.g_width() = gripper.states().width;
-      if (is_gripper_moving())
-        state.g_state() = "moving";
-      else if (is_gripper_closed())
+      if (gripper_closing) {
+        state.g_state() = "closing";
+      } else if (gripper_openning) {
+        state.g_state() = "openning";
+      } else if (is_gripper_closed()) {
         state.g_state() = "closed";
-      else if (is_gripper_open())
+      } else if (is_gripper_open()) {
         state.g_state() = "open";
-      else
+      } else {
         state.g_state() = "unknown";
+      }
     }
 
     if (check_collisions) {
@@ -780,6 +966,7 @@ private:
                                                        geom_data, _q, true);
 
       if (is_collision) {
+        /*robot.Stop();*/
         throw_pretty("The current state is very close to collision!");
       }
     }
@@ -805,7 +992,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "=== [Subscriber] Create reader." << std::endl;
 
-    double dt = .8 * .001;
+    double dt = .001;
 
     double stop_dt_if_no_msg_ms = 100;
     double max_time_s = 1000;
@@ -876,19 +1063,20 @@ int main(int argc, char *argv[]) {
     std::cout << "First state msg is \n" << state_msg << std::endl;
     std::cout << "First cmd msg is \n" << cmd_msg << std::endl;
 
+    robot->start();
+
     auto tic = std::chrono::high_resolution_clock::now();
     auto last_msg_time = std::chrono::high_resolution_clock::now();
     bool warning_send = false;
     bool good_msg_send = false;
     std::vector<double> time_loop_us_vec;
 
-    robot->start();
-
     while (std::chrono::duration_cast<std::chrono::milliseconds>(
                std::chrono::high_resolution_clock::now() - tic)
-                   .count() /
-               1000. <
-           max_time_s) {
+                       .count() /
+                   1000. <
+               max_time_s &&
+           !g_stop_sched) {
 
       auto tic_loop = std::chrono::high_resolution_clock::now();
 
@@ -938,8 +1126,6 @@ int main(int argc, char *argv[]) {
             state_last_good_cmd = state_msg; // save the last good state!
             last_msg_time = std::chrono::high_resolution_clock::now();
             if (!good_msg_send) {
-              std::cout << "Good message received. Sending it to the robot"
-                        << std::endl;
               good_msg_send = true;
               warning_send = false;
             }

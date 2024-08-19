@@ -27,6 +27,7 @@ with open(args.config, "r") as stream:
 robot_model = model_robot.FlexivModel(
     render=False,
     q0=config.get("q0", None),
+    urdf="/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.urdf"
 )
  
 server_process = None
@@ -46,7 +47,7 @@ elif args.mode == "real":
     robot = robot_client.Flexiv_client( render=False, create_sim_server=False)
 
 
-simulation_time_s = 50
+simulation_time_s = 200
 
 
 warn_time_dt = False
@@ -100,21 +101,57 @@ s = robot.get_robot_state()
 # controller = easy_controllers.TaskSpaceImpedance(
 #                  robot =robot_model.robot, s=s)
 
-# controller = easy_controllers.GravityComp(robot_model)
-controller = easy_controllers.OpenCloseGripper(robot_model, s)
+# controller = easy_controllers.OpenCloseGripper(robot_model, s)
+
+model = robot_model.robot.model
+data = robot_model.robot.data
+
+
+for frame in model.frames:
+    print(frame.name)
+
+q = s["q"]
+
+frame_id = model.getFrameId( "gripper_c_j" )
+
+print("joint_id", frame_id)
+
+print("q", q)
+robot_model.robot.framePlacement(q, frame_id, update_kinematics=True)
+
+# robot_model.robot.updateFramePlacements(data)
+iMd = data.oMf[frame_id]
+print("iMd", iMd)
+p0 = iMd.translation
+
+
 
 
 try:
     tic_start = time.time()
+    # controller = easy_controllers.GravityComp(robot_model,s,tic_start)
+
+
+    # if False:
+    Tdes = np.array([[-1.,0.,0.],[0.,1.,0.],[0.,0.,-1.]])
+    R = pin.rpy.rpyToMatrix(.0,.0,.0)
+    Tdes = Tdes @ R
+    pdes = p0 + np.array([.00,-0.1,0.])
+    oMdes = pin.SE3(Tdes, pdes)
+    # controller = easy_controllers.EndEffPose2(robot_model.robot, s, oMdes, frame_id , tic_start)
+
+    # print('desired pos', p0)
+    controller = easy_controllers.ForceController(robot_model.robot, frame_id, desired_f = -3., desired_R = Tdes, desired_pos = p0)
+
+
     for i in range(1000 * simulation_time_s):
 
-        print(f"step {i}")
         tic = time.time()
         s = robot.get_robot_state()
         senv = robot.get_env_state()
         img = robot.get_env_image()
 
-        cmd = controller.get_control(s, robot_model.robot , tic_start - tic )
+        cmd = controller.get_control(s,  tic)
         if cmd is not None:
             robot.set_cmd(cmd)
 
@@ -126,10 +163,11 @@ try:
         if (toc - tic) > robot.dt and warn_time_dt:
             print(f"warning: loop time {toc-tic} is greater than dt")
 
-        # time.sleep(max(0, robot.dt - (toc - tic)))
-        time.sleep(0.01)
+        time.sleep(max(0, robot.dt - (toc - tic)))
+        # time.sleep(0.001)
 
 
 finally:
     robot.close()
+
 

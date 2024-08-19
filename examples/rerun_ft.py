@@ -5,7 +5,7 @@ import time
 from pinocchio.robot_wrapper import RobotWrapper
 import FlexivPy.robot.vis.rerunio as rerunio
 
-from FlexivPy.robot.dds.flexiv_messages import FlexivState, FlexivCmd, EnvImage
+from FlexivPy.robot.dds.flexiv_messages import FlexivState, FlexivCmd
 import cv2
 from FlexivPy.robot.dds.subscriber import SubscriberNode
 
@@ -27,8 +27,8 @@ class Rerun_full_log( SubscriberNode ):
         self.urdf_logger.log(q= q0 , log_meshes = True)
 
 
-        super().__init__(topic_names= ['FlexivState', 'FlexivCmd', 'EnvImage'],
-                         topic_types= [FlexivState,FlexivCmd,EnvImage],
+        super().__init__(topic_names= ['FlexivState', 'FlexivCmd'],
+                         topic_types= [FlexivState, FlexivCmd],
                          dt=.1,
                          max_time_s=100, 
                          warning_dt=.2,
@@ -41,17 +41,21 @@ class Rerun_full_log( SubscriberNode ):
             if self.message_queue[0][0]:
                 self.urdf_logger.log(q= np.array(self.message_queue[0][0].q) , log_meshes = False)
                 for i in range(7):
-                    rr.log(f"joint/q{i}", rr.Scalar(self.message_queue[0][0].q[i]))
+                    rr.log(f"jointq/q{i}", rr.Scalar(self.message_queue[0][0].q[i]))
+
+                # i want to log the force torque sensor data
+                for i in range(6):
+                    rr.log(f"ft_sensor/f{i}", rr.Scalar(self.message_queue[0][0].ft_sensor[i]))
+
+                for i in range(7):
+                    rr.log(f"jointt/tau{i}", rr.Scalar(self.message_queue[0][0].tau[i]))
+
 
             if self.message_queue[0][1]:
                 for i in range(7):
                     rr.log(f"ctrl/tau_ff{i}", rr.Scalar(self.message_queue[0][1].tau_ff[i]
                                                   ))
 
-            if self.message_queue[0][2]:
-                np_array = np.frombuffer(bytes(self.message_queue[0][2].data), dtype=np.uint8)
-                frame = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
-                rr.log("image", rr.Image(frame))
 
             else:
                 print("message is None")

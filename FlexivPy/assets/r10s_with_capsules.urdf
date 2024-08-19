@@ -280,6 +280,29 @@
   <collision_checking><capsule name="c_link7.stl"/></collision_checking></link>
   <link name="flange"/>
 
+
+<link name = "gripper" >
+<inertial>
+      <mass value=".9"/>
+      <origin rpy="0 0 0" xyz="0.0 0.0 0.08"/>
+      <inertia ixx="0.00" ixy="0.0" ixz="0.0" iyy="0.00" iyz="0.0" izz="0.00"/>
+</inertial>
+
+    <visual name="ring-7">
+      <origin rpy="0 0 0" xyz="0 0 0.05"/>
+      <geometry>
+      <cylinder radius=".05" length=".1" />
+      </geometry>
+      <material name="rizon_white"/>
+    </visual>
+
+
+</link>
+
+
+
+
+
   <link name="table">
     <visual>
       <geometry>
@@ -307,6 +330,109 @@
  <origin rpy="0. 0 0." xyz="0 0 -0.11"/> 
   </joint>
 
+  <joint name="gripper_j" type="fixed">
+    <parent link="flange"/>
+    <child link="gripper"/>
+    <origin rpy="0. 0 0." xyz="0 0 0"/> 
+  </joint>
+
+
+
+
+   <link name="gripper_c" >
+
+
+
+<visual>
+
+     <geometry>
+        <sphere radius="0.02"/>
+      </geometry>
+
+
+<material name="">
+        <color rgba="1. 1. 1. 1."/>
+</material>
+
+
+
+</visual>
+
+
+<visual>
+      <origin rpy="0. 0 0." xyz="0.08 0 0."/> 
+     <geometry>
+        <sphere radius="0.02"/>
+      </geometry>
+
+<material name="">
+        <color rgba="1. 0. 0. 1."/>
+	</material>
+</visual>
+
+
+<visual>
+      <origin rpy="0. 0 0." xyz="0.0 0 0.08"/> 
+     <geometry>
+        <sphere radius="0.02"/>
+      </geometry>
+
+<material name="">
+        <color rgba="0. 0. 1. 1."/>
+	</material>
+</visual>
+
+
+
+<collision>
+
+     <geometry>
+        <sphere radius="0.02"/>
+      </geometry>
+
+
+<material name="">
+        <color rgba="1. 1. 1. 1."/>
+</material>
+
+
+
+</collision>
+
+
+<collision>
+      <origin rpy="0. 0 0." xyz="0.08 0 0."/> 
+     <geometry>
+        <sphere radius="0.02"/>
+      </geometry>
+
+<material name="">
+        <color rgba="1. 0. 0. 1."/>
+	</material>
+</collision>
+
+
+<collision>
+      <origin rpy="0. 0 0." xyz="0.0 0 0.14"/> 
+     <geometry>
+        <sphere radius="0.02"/>
+      </geometry>
+
+<material name="">
+        <color rgba="0. 0. 1. 1."/>
+	</material>
+</collision>
+
+
+
+</link>
+
+
+  <joint name="gripper_c_j" type="fixed">
+    <parent link="gripper"/>
+    <child link="gripper_c"/>
+    <origin rpy="0. 0 0." xyz="0 0 .10"/> 
+  </joint>
 
 
 

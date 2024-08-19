@@ -211,7 +211,11 @@ class FlexivSim:
         self.cmd = cmd
 
     def get_robot_state(self):
-        return {"q": self.get_robot_joints(), "dq": self.get_robot_vel(), "g_state": self.get_gripper_state()}
+        return {"q": self.get_robot_joints(), "dq": self.get_robot_vel(), "g_state": self.get_gripper_state(),
+                "g_moving": False,
+                "g_force": -1,
+                "g_width": -1 }
+
 
     def get_env_image(self):
         return self.last_camera_image
