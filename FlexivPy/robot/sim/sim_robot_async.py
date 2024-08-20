@@ -272,6 +272,7 @@ if __name__ == "__main__":
 
     argp.add_argument("--no_gravity_comp", action="store_true", help="render the simulation")
 
+    argp.add_argument("--has_gripper", action="store_true", help="render the simulation")
 
 
 
@@ -294,7 +295,8 @@ if __name__ == "__main__":
     )
 
     robot_sim = sim_robot.FlexivSim(dt=dt, render=args.render, xml_path=args.xml_path, q0=q0, 
-                                    pin_model=robot_model.robot, render_images=args.render_images, joints=args.joints, gravity_comp= not args.no_gravity_comp)
+                                    pin_model=robot_model.robot, render_images=args.render_images, joints=args.joints, gravity_comp= not args.no_gravity_comp,
+                                    has_gripper=args.has_gripper)
 
     sim = FlexivSim_dds_server( robot_sim, dt, max_time=100.0)
 
