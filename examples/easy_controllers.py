@@ -4,34 +4,54 @@ import pinocchio as pin
 from numpy.linalg import norm, solve
 import time
 from scipy.optimize import minimize
+from FlexivPy.robot.dds.flexiv_messages import FlexivCmd, FlexivState, EnvState, EnvImage
 
 # TODO: small demo of goal reaching tasks, opening and closing the gripper!
 # TODO: continue here!!
-def run_controller( robot, controller, goal_tolerance  ,  dt , max_time  ):
 
+
+from enum import Enum
+
+class ControllerStatus(Enum):
+    UNKNOWN = 0
+    GOAL_REACHED = 1
+    NOT_APPLICABLE = 2
+    MAX_TIME = 3
+    ERROR = 4
+
+
+def run_controller( robot, controller,  dt , max_time  ):
+    s = robot.get_robot_state()
+    controller.setup(s)
     tic_start = time.time()
+    print("start controller")
+    exit_status = ControllerStatus.UNKNOWN
     while True:
         tic = time.time()
         s = robot.get_robot_state()
         
-        if not controller.is_applicable(s):
+        if not controller.applicable(s , tic - tic_start):
            print("controller is not applicable")
+           exit_status = ControllerStatus.NOT_APPLICABLE
            break
         
-        if controller.error(s) < goal_tolerance:
+        if controller.goal_reached(s, tic - tic_start):
+            exit_status = ControllerStatus.GOAL_REACHED
             print("goal reached")
             break
 
         if time.time() - tic_start > max_time:
+            exit_status = ControllerStatus.MAX_TIME
             print("max time reached")
             break
         
-        cmd = controller.get_control(s, tic)
+        cmd = controller.get_control(s, tic - tic_start)
         # TODO: should I break if the controller returns None?
         if cmd:
             robot.set_cmd(cmd)
 
         time.sleep(max(0, dt - (time.time() - tic)))
+    return exit_status
 
 
 def frame_error(q, robot, frame_id, oMdes):
@@ -719,4 +739,248 @@ class ForceController():
         # return cmd
         return cmd
 
+class GoHomeDefault() :
+    def __init__(self):
+        pass
+
+    def setup(self,s):
+        pass
+
+    def get_control(self, state, tic):
+        return FlexivCmd( special_cmd="go-home")
+
+
+    def applicable(self,state,tic):
+        return True
+
+    def goal_reached(self,state,tic):
+        return state.state == "waiting-home"
+
+
+
+
+        assert error(self.q_des) < 1e-6
+
+
+        self.max_displacement = 0.005
+
+        self.coefficients = fit_3rd_order_polynomial(self.q0, np.zeros(7), self.q_des, np.zeros(7))
+
+        fixed_time_scaling = False
+
+        if fixed_time_scaling:
+            self.motion_time = 3 # 3 seconds
+
+        else:
+            self.max_vel = .5 # .5 rad / s
+            print("we use max vel to compute the time scaling")
+
+            max_vel, time_max_vel = polynomial_max_velocity(self.coefficients)
+
+            rs = np.zeros(7)
+            for i in range(7):
+                r =  max_vel[i] / self.max_vel 
+                print('joint:', i, 'max vel:', max_vel[i], 'time:', time_max_vel[i] , 
+                      'r: ', r)
+                rs[i] = r
+            rmax = np.max(rs)
+            print('max ratio is: ', rmax)
+            print('to get a max vel of ', self.max_vel, 'we need to scale time by', rmax)
+            self.motion_time =  rmax
+
+
+
+
+class GoJointConfiguration():
+    def __init__(self, qdes =None, max_v = None, motion_time = None , max_extra_time_rel = .2, error_running = 2 * 1e-2, error_goal = 5 * 1e-3, min_motion_time = 1.):
+        self.max_v = max_v
+        self.motion = time
+        self.kp = 2. * np.array( [3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
+        self.kv =  2. * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+        self.qdes = qdes
+        self.max_extra_time_rel = max_extra_time_rel
+        self.error_running = error_running
+        self.error_goal = error_goal
+        self.min_motion_time = min_motion_time
+
+
+        if max_v is None and motion_time is None:
+            raise ValueError("define either max_v or motion_time")
+
+    def setup(self,s):
+        q0 = np.array(s.q)
+
+        self.coefficients = fit_3rd_order_polynomial(q0, np.zeros(7), self.qdes, np.zeros(7))
+
+        if self.max_v is not None:
+            print("we use max vel to compute the time scaling")
+            max_vel, time_max_vel = polynomial_max_velocity(self.coefficients)
+
+            rs = np.zeros(7)
+            for i in range(7):
+                r =  max_vel[i] / self.max_v
+                print('joint:', i, 'max vel:', max_vel[i], 'time:', time_max_vel[i] , 
+                      'r: ', r)
+                rs[i] = r
+            rmax = np.max(rs)
+            print('max ratio is: ', rmax)
+            print('to get a max vel of ', self.max_v, 'we need to scale time by', rmax)
+            self.motion_time =  rmax
+
+            if self.motion_time < self.min_motion_time:
+                self.motion_time = self.min_motion_time
+
+    def get_control(self,state,tic):
+        t_i = min(tic / self.motion_time, 1.)
+        p, pdot, _ =  evaluate_polynomial(self.coefficients, t_i)
+        pdot /= self.motion_time
+
+        return  FlexivCmd( 
+            q = p , 
+            dq = pdot , 
+            kp = self.kp, 
+            kv = self.kv
+        )
+
+
+    def applicable(self,state,tic):
+        """
+
+        """
+        print("at tic", tic)
+        if tic > self.motion_time * (1 + self.max_extra_time_rel):
+            print("tic" , tic , "max " ,  self.motion_time * (1 + self.max_extra_time_rel))
+            return False
+
+        q = np.array(state.q)
+        t_i = min(tic / self.motion_time,1.)
+        p, pq , _ =  evaluate_polynomial(self.coefficients, t_i)
+        if np.linalg.norm(p - q) > self.error_running :
+            print("distance to goal is too large")
+            print( np.linalg.norm(p - q) )
+            return False
+        else:
+            return True
+
+    def goal_reached(self,state, tic):
+        """
+
+        """
+        q = np.array(state.q)
+        qv = np.array(state.dq)
+        return np.linalg.norm(qv) < self.error_goal and np.linalg.norm(q - self.qdes) <self.error_goal 
+
+
+    
+class GoJointConfigurationSlow():
+    def __init__(self, qgoal, error_goal = .01 , max_dx = 0.001):
+        self.qgoal = qgoal
+        self.error_goal = error_goal
+        self.max_dx = max_dx
+        self.kp = np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
+        self.kv = np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+
+    def setup(self, s):
+        pass
+
+    def get_control(self,state,tic):
+        q = np.array(state.q)
+        if np.linalg.norm(q - self.qgoal) > self.error_goal:
+            qgoal =  q + self.max_dx * (self.qgoal - q) / np.linalg.norm(q - self.qgoal)
+        else:
+            qgoal = self.qgoal
+
+        return FlexivCmd( 
+            q = qgoal,
+            kp = self.kp,
+            kv = self.kv,
+            mode = 2)
+
+
+    def applicable(self,state):
+        return True
+
+    def goal_reached(self,state):
+        q = np.array(state.q)
+        return np.linalg.norm(q - self.qgoal)< self.error_goal
+
+
+class GoEndEffectorPose():
+
+    def __init__(self,robot, oMdes,  frame_id, error ,  max_v = .3, motion_time=None):
+        self.robot = robot
+        self.oMdes = oMdes
+        self.frame_id = frame_id
+        self.max_v = max_v
+        self.motion_time = motion_time
+        self.joint_controller = None
+
+
+    def setup(self,s):
+
+        self.error = lambda q: frame_error(q, self.robot, self.frame_id, self.oMdes)
+        self.jac_error = lambda q: frame_error_jac(q, self.robot, self.frame_id, self.oMdes)
+        min_res = minimize(self.error, jac=self.jac_error, x0=s["q"], method="BFGS")
+        self.q_des = min_res.x
+        assert self.error(self.q_des) < 1e-6
+
+        self.joint_controller = GoJointConfiguration(
+                qdes = self.q_des , 
+                max_v = self.max_v , 
+                motion_time =self.motion_time) 
+
+
+    def applicable(self,state,tic):
+        return self.joint_controller.applicable(state,tic)
+
+    def goal_reached(self,state,tic):
+        # alternative: check the end effector position
+        return self.joint_controller.goal_reached(state,tic)
+
+
+
+
+class JointFloating():
+    def __init__(self): 
+        self.kv = .001 * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+
+    def setup(self,s):
+        pass
+
+    def get_control(self,state,tic):
+        return  FlexivCmd(kv=self.kv)
+
+
+    def applicable(self,state,tic):
+        """
+        """
+        return True
+
+    def goal_reached(self,state, tic):
+        """
+        """
+        return False
+
+
+class Stay():
+    def __init__(self):
+        self.kp = 1 * np.array( [3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
+        self.kv =  3. * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+        
+
+    def setup(self,s):
+        self.q = s.q
+
+    def get_control(self,state,tic):
+        return  FlexivCmd(q = self.q, kp = self.kp, kv = self.kv)
+
+    def applicable(self,state,tic):
+        """
+        """
+        return True
+
+    def goal_reached(self,state, tic):
+        """
+        """
+        return False
 

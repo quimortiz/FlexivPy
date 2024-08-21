@@ -145,12 +145,12 @@ try:
     except:
         pass
 
-    controller = easy_controllers.EndEffPose2(robot_model.robot, s, oMdes, frame_id , tic_start)
+    # controller = easy_controllers.EndEffPose2(robot_model.robot, s, oMdes, frame_id , tic_start)
 
     # print('desired pos', p0)
     # controller = easy_controllers.ForceController(robot_model.robot, frame_id, desired_f = -3., desired_R = Tdes, desired_pos = p0)
 
-    # controller = easy_controllers.GravityComp(robot_model,s,tic_start)
+    controller = easy_controllers.GravityComp(robot_model,s,tic_start)
 
     for i in range(1000 * simulation_time_s):
 

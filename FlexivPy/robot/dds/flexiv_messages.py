@@ -13,15 +13,16 @@ from cyclonedds.idl.types import int64, float32, array, int32, byte, sequence
 @annotate.final
 @annotate.autoid("sequential")
 class FlexivCmd(idl.IdlStruct):
-    tau_ff: array[types.float64, 7]
-    q: array[types.float64, 7]
-    dq: array[types.float64, 7]
-    kp: array[types.float64, 7]
-    kv: array[types.float64, 7]
-    mode: int32
-    g_cmd: str # "close", "open"
-    timestamp: str
-
+    tau_ff: array[types.float64, 7] = field(default_factory=lambda: 7*[.0])
+    q: array[types.float64, 7]= field(default_factory=lambda: 7*[.0])
+    dq: array[types.float64, 7]= field(default_factory=lambda: 7*[.0])
+    kp: array[types.float64, 7]= field(default_factory=lambda: 7*[.0])
+    kv: array[types.float64, 7]= field(default_factory=lambda: 7*[.0])
+    mode: int32 = 2
+    g_cmd: str = "" # "close", "open"
+    timestamp: str = ""
+    special_cmd: str = "" # "go-home", 
+    tau_ff_with_gravity: bool = False
 
 @dataclass
 @annotate.final
@@ -36,6 +37,7 @@ class FlexivState(idl.IdlStruct):
     g_moving: bool = False
     g_force: types.float64 = -1
     g_width: types.float64 = -1
+    state: str = "" # going-home, home, user, waiting
 
 
 

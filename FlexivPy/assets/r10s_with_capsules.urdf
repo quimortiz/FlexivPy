@@ -283,8 +283,8 @@
 
 <link name = "gripper" >
 <inertial>
-      <mass value=".9"/>
-      <origin rpy="0 0 0" xyz="0.0 0.0 0.08"/>
+      <mass value="0."/>
+      <origin rpy="0 0 0" xyz="0.0 0.0 0.055"/>
       <inertia ixx="0.00" ixy="0.0" ixz="0.0" iyy="0.00" iyz="0.0" izz="0.00"/>
 </inertial>
 

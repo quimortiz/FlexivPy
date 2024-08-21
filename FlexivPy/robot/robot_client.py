@@ -116,26 +116,7 @@ class Flexiv_client:
 
     def set_cmd(self, cmd):
         """ """
-        # create the dds message
-        # Get the current time
-        now = datetime.now()
-
-        # Format the time as a string with up to milliseconds
-        timestamp_str = now.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-
-        # print("Timestamp with milliseconds:", timestamp_str)
-        msg_out = FlexivCmd(
-            tau_ff=cmd["tau_ff"],
-            q=cmd["q"],
-            dq=cmd["dq"],
-            kp=cmd["kp"],
-            kv=cmd["kv"],
-            g_cmd=cmd.get("g_cmd",""),
-            timestamp=timestamp_str,
-            mode=cmd["mode"],
-        )
-
-        self.writer.write(msg_out)
+        self.writer.write(cmd)
 
     def step(self):
         """ """
@@ -190,14 +171,7 @@ class Flexiv_client:
         """
         msg = get_last_msg(self.reader, FlexivState)
         if msg:
-            self.last_state = {"q": np.array(msg.q), "dq": np.array(msg.dq),
-                               "tau": np.array(msg.tau), 
-                               "ft_sensor": np.array(msg.ft_sensor),
-                               "timestamp": msg.timestamp,
-                                "g_state" : msg.g_state,
-                               "g_moving" : msg.g_moving,
-                               "g_force": msg.g_force,
-                               "g_width": msg.g_width }
+            self.last_state = msg
             self.time_last_state = time.time()
             return self.last_state
 

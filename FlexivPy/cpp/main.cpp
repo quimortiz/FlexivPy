@@ -16,6 +16,7 @@
 #include "pinocchio/multibody/data.hpp"
 
 #include <flexiv/rdk/model.hpp>
+#include <optional>
 
 // TODO: use their approach to terminate the callback!!
 
@@ -116,6 +117,82 @@ void scale_vector(std::vector<double> &vec, double scale) {
   }
 }
 
+bool is_edge_collision(pinocchio::Model &model, pinocchio::Data &data,
+                       pinocchio::GeometryModel &geom_model,
+                       pinocchio::GeometryData &geom_data,
+                       const Eigen::VectorXd &q, const Eigen::VectorXd &qgoal,
+                       int num_checks = 100) {
+  bool is_collision = false;
+  for (size_t i = 0; i < num_checks; i++) {
+    Eigen::VectorXd q_i = q + (qgoal - q) * i / num_checks;
+
+    is_collision = pinocchio::computeCollisions(model, data, geom_model,
+                                                geom_data, q_i, true);
+
+    if (is_collision) {
+      std::cout << "Edge collision!" << std::endl;
+      break;
+    }
+  }
+  return is_collision;
+}
+
+std::vector<Eigen::VectorXd>
+go_to_q(const Eigen::VectorXd &q, const Eigen::VectorXd &qgoal,
+        const Eigen::VectorXd &qmin, const Eigen::VectorXd &qmax,
+        pinocchio::Model &model, pinocchio::Data &data,
+        pinocchio::GeometryModel &geom_model,
+        pinocchio::GeometryData &geom_data, int num_checks = 100) {
+
+  std::vector<Eigen::VectorXd> path;
+
+  const int num_collision_checks = 100;
+  bool is_collision = is_edge_collision(model, data, geom_model, geom_data, q,
+                                        qgoal, num_collision_checks);
+
+  if (is_collision) {
+
+    const int num_attempts = 50;
+    Eigen::VectorXd best_q_rand(7);
+    double best_cost = std::numeric_limits<double>::infinity();
+
+    std::cout << "lets try to go first to a random point, then to home "
+              << std::endl;
+
+    Eigen::VectorXd q_rand(7);
+    bool path_found = false;
+    for (size_t j = 0; j < num_attempts; j++) {
+      q_rand = qmin + (qmax - qmin)
+                              .cwiseProduct(Eigen::VectorXd::Random(7) +
+                                            Eigen::VectorXd::Ones(7)) *
+                          .5;
+
+      if (!is_edge_collision(model, data, geom_model, geom_data, q, q_rand,
+                             num_collision_checks) &&
+          !is_edge_collision(model, data, geom_model, geom_data, q_rand, qgoal,
+                             num_collision_checks)) {
+        path_found = true;
+        double tentative_cost =
+            (qgoal - q_rand).norm() + (q_rand - qgoal).norm();
+        if (tentative_cost < best_cost) {
+          best_cost = tentative_cost;
+          best_q_rand = q_rand;
+        }
+      }
+    }
+
+    if (!path_found) {
+      spdlog::error("Cannot find a path to home -- move robot manually");
+    } else {
+      path = {best_q_rand, qgoal};
+    }
+
+  } else {
+    std::cout << "going home directly!" << std::endl;
+    path = {qgoal};
+  }
+  return path;
+}
 // Macro to throw an exception with detailed information
 #define throw_pretty(message)                                                  \
   throw std::runtime_error(                                                    \
@@ -158,11 +235,10 @@ public:
     data = new_value;
   }
 
-  // Retrieve the data with mutex protection and output it to the provided
-  // reference
-  void get(T &output) const {
+  // Retrieve the data with mutex protection
+  T get() const {
     std::lock_guard<std::mutex> lock(data_mutex);
-    output = data;
+    return data;
   }
 
 private:
@@ -171,19 +247,39 @@ private:
 };
 
 struct Robot {
-  virtual void get_state(FlexivMsg::FlexivState &state) = 0;
+
+  virtual FlexivMsg::FlexivState get_state() = 0;
+
   virtual void send_cmd(const FlexivMsg::FlexivCmd &cmd) = 0;
 
-  virtual void compute_default_cmd(const FlexivMsg::FlexivState &state,
+  virtual void compute_default_cmd(const Eigen::VectorXd &q,
                                    FlexivMsg::FlexivCmd &cmd) {
+    (void)q;
     (void)cmd;
   }
 
+  virtual void compute_home_cmd(const FlexivMsg::FlexivState &state,
+                                FlexivMsg::FlexivCmd &cmd) {
+    (void)cmd;
+  }
+
+  virtual bool ok() { return true; }
   virtual void start() {}
   virtual void stop() {}
-  virtual void get_cmd(FlexivMsg::FlexivCmd &cmd) { (void)cmd; }
-
+  virtual FlexivMsg::FlexivCmd get_cmd() { return {}; }
   virtual ~Robot() {}
+  bool home_mode = false;
+
+  Eigen::VectorXd qhome;
+
+  virtual bool is_home() { return false; }
+  virtual void reset_home() {}
+  virtual void set_robot_state(const std::string &state) {
+    (void)state;
+    throw_pretty("Not implemented");
+  }
+
+  virtual std::string get_robot_state() { throw_pretty("Not implemented"); }
 };
 
 struct Fake_robot : public Robot {
@@ -207,7 +303,8 @@ public:
                    << std::endl;
     }
   }
-  virtual void get_state(FlexivMsg::FlexivState &state) override {
+  virtual FlexivMsg::FlexivState get_state() override {
+    FlexivMsg::FlexivState state;
     std::string time = get_current_timestamp();
     state.timestamp(time);
 
@@ -216,6 +313,7 @@ public:
       log_file_state << "Getting state from robot at " << time << std::endl;
       log_file_state << "Message has time stamp: " << time << std::endl;
     }
+    return state;
   }
   virtual void send_cmd(const FlexivMsg::FlexivCmd &cmd) override {
     std::string time = get_current_timestamp();
@@ -297,6 +395,8 @@ void print_vector(const std::vector<double> &vec) {
 }
 
 struct RealRobot : Robot {
+
+  virtual bool ok() override { return robot.operational(); }
   flexiv::rdk::Robot robot;
   flexiv::rdk::Gripper gripper;
   flexiv::rdk::Mode robot_mode = flexiv::rdk::Mode::RT_JOINT_POSITION;
@@ -309,6 +409,79 @@ struct RealRobot : Robot {
   pinocchio::Data data;
   pinocchio::GeometryData geom_data;
   pinocchio::GeometryModel geom_model;
+  std::vector<Eigen::VectorXd> recovery_path;
+  int go_home_subgoal = 0;
+  double delta_home = .005;
+
+  virtual bool is_home() override {
+    auto _q = robot.states().q;
+    Eigen::VectorXd q = Eigen::VectorXd::Map(_q.data(), 7);
+    return (q - qhome).norm() < delta_home;
+  }
+
+  virtual void reset_home() override {
+    recovery_path.clear();
+    go_home_subgoal = 0;
+  }
+
+  virtual void compute_home_cmd(const FlexivMsg::FlexivState &state,
+                                FlexivMsg::FlexivCmd &cmd) override {
+
+    // Check if I have a recovery path
+
+    if (!recovery_path.size()) {
+      spdlog::info("No recovery path available, computing one!!");
+
+      Eigen::VectorXd q = Eigen::VectorXd::Map(state.q().data(), 7);
+      Eigen::VectorXd qgoal = qhome;
+      Eigen::VectorXd qmin = Eigen::VectorXd::Map(q_min.data(), 7);
+      Eigen::VectorXd qmax = Eigen::VectorXd::Map(q_max.data(), 7);
+
+      recovery_path =
+          go_to_q(q, qgoal, qmin, qmax, model, data, geom_model, geom_data);
+      go_home_subgoal = 0;
+    }
+
+    spdlog::info("I have a recovery path, executing it");
+
+    Eigen::VectorXd qgoal = recovery_path.at(go_home_subgoal);
+    Eigen::VectorXd q = Eigen::VectorXd::Map(robot.states().q.data(), 7);
+
+    std::cout << "qgoal - q" << std::endl;
+    std::cout << (qgoal - q).norm() << std::endl;
+    if ((qgoal - q).norm() < delta_home) {
+      spdlog::info("Reached subgoal " + std::to_string(go_home_subgoal));
+      go_home_subgoal++;
+      go_home_subgoal =
+          std::max(go_home_subgoal, int(recovery_path.size()) - 1);
+      qgoal = recovery_path.at(go_home_subgoal);
+    }
+
+    // get the current state
+    double dx_limit = .01;
+
+    if ((qgoal - q).norm() > dx_limit) {
+      qgoal = q + (qgoal - q).normalized() * dx_limit;
+    }
+
+    std::copy(qgoal.data(), qgoal.data() + qgoal.size(), cmd.q().begin());
+    std::fill(cmd.dq().begin(), cmd.dq().end(), 0.);
+    std::fill(cmd.tau_ff().begin(), cmd.tau_ff().end(), 0.);
+    cmd.tau_ff_with_gravity() = false;
+
+    double scaling_kp = 1.;
+    double scaling_kv = 1.5;
+
+    std::vector<double> t_kImpedanceKp = kImpedanceKp;
+    std::vector<double> t_kImpedanceKd = kImpedanceKd;
+
+    scale_vector(t_kImpedanceKp, scaling_kp);
+    scale_vector(t_kImpedanceKd, scaling_kv);
+
+    std::copy(t_kImpedanceKp.begin(), t_kImpedanceKp.end(), cmd.kp().begin());
+    std::copy(t_kImpedanceKd.begin(), t_kImpedanceKd.end(), cmd.kv().begin());
+    cmd.mode() = 2;
+  }
 
   // it true, we just print the commands to the screen.
 
@@ -320,7 +493,7 @@ struct RealRobot : Robot {
 
     try {
 
-      cmd_msg.get(_cmd);
+      auto _cmd = cmd_msg.get();
 
       if (robot_mode == flexiv::rdk::Mode::RT_JOINT_POSITION) {
 
@@ -344,7 +517,8 @@ struct RealRobot : Robot {
 
         throw_pretty("Mode not implemented");
       }
-      _get_state(_state);
+      auto _state = _get_state();
+      /*_get_state(_state);*/
       state_msg.update(_state);
     } catch (const std::exception &e) {
       spdlog::error(e.what());
@@ -361,12 +535,13 @@ struct RealRobot : Robot {
     scheduler->Start();
   }
 
-  virtual void compute_default_cmd(const FlexivMsg::FlexivState &state,
+  virtual void compute_default_cmd(const Eigen::VectorXd &q,
                                    FlexivMsg::FlexivCmd &cmd) override {
 
     cmd.tau_ff().fill(0.);
+    cmd.tau_ff_with_gravity() = false;
     cmd.dq().fill(0.);
-    cmd.q() = state.q();
+    std::copy(q.data(), q.data() + q.size(), cmd.q().begin());
 
     if (robot_mode == flexiv::rdk::Mode::RT_JOINT_POSITION) {
       cmd.mode() = 1;
@@ -400,18 +575,22 @@ struct RealRobot : Robot {
     gripper.Stop();
   }
 
-  RealRobot(std::string robot_serial_number, flexiv::rdk::Mode t_robot_mode,
-            bool go_home)
+  RealRobot(std::string robot_serial_number, flexiv::rdk::Mode t_robot_mode)
       : robot(robot_serial_number), gripper(robot) {
 
+    qhome.resize(7);
+    qhome << 0.000, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000;
+
     std::string urdf =
-        "/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.urdf";
+        "/home/quim/code/FlexivPy/FlexivPy/assets/flexiv_rizon10s_kinematics.urdf";
+
     std::string srdf =
         "/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.srdf";
 
     pinocchio::urdf::buildModel(urdf, model);
     data = pinocchio::Data(model);
-    pinocchio::urdf::buildGeom(model, urdf, pinocchio::COLLISION, geom_model);
+    pinocchio::urdf::buildGeom(model, urdf, pinocchio::COLLISION, geom_model,
+                                "/home/quim/code/FlexivPy/FlexivPy/assets/meshes/" );
 
     geom_model.addAllCollisionPairs();
     if (srdf != "") {
@@ -441,18 +620,6 @@ struct RealRobot : Robot {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     spdlog::info("Robot is now operational");
-
-    // Move robot to home pose
-    if (go_home) {
-      spdlog::info("Moving to home pose");
-      switch_mode_sync(flexiv::rdk::Mode::NRT_PRIMITIVE_EXECUTION);
-      robot.ExecutePrimitive("Home()");
-
-      // Wait for the primitive to finish
-      while (robot.busy()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      }
-    }
 
     // check if i can compute gravity compensation term.
 
@@ -508,15 +675,17 @@ struct RealRobot : Robot {
 
     std::cout << "Real robot created" << std::endl;
 
+    switch_mode_sync(flexiv::rdk::Mode::NRT_JOINT_POSITION);
+
     // Instantiate gripper control interface
 
     // Manually initialize the gripper, not all grippers need this step
+    
     spdlog::info(
         "Initializing gripper, this process takes about 10 seconds ...");
     gripper.Init();
     spdlog::info("Initialization complete");
     last_gripper_time = std::chrono::system_clock::now();
-
 
     spdlog::info("make sure that the gripper is " + initial_gripper_state);
 
@@ -538,14 +707,17 @@ struct RealRobot : Robot {
 
     robot_mode = t_robot_mode;
 
-    FlexivMsg::FlexivState tmp_state;
+    FlexivMsg::FlexivState tmp_state = _get_state();
     FlexivMsg::FlexivCmd tmp_cmd;
 
-    _get_state(tmp_state);
-    compute_default_cmd(tmp_state, tmp_cmd);
+    Eigen::VectorXd q = Eigen::VectorXd::Map(tmp_state.q().data(), 7);
+    compute_default_cmd(q, tmp_cmd);
 
     std::cout << "Initial cmd is" << std::endl;
     std::cout << tmp_cmd << std::endl;
+
+    std::cout << "Initial state is" << std::endl;
+    std::cout << tmp_state << std::endl;
 
     state_msg.update(tmp_state);
     cmd_msg.update(tmp_cmd);
@@ -556,9 +728,7 @@ struct RealRobot : Robot {
     robot_mode = t_robot_mode;
   }
 
-  virtual void get_state(FlexivMsg::FlexivState &state) override {
-    state_msg.get(state);
-  }
+  FlexivMsg::FlexivState get_state() override { return state_msg.get(); }
 
   virtual void send_cmd(const FlexivMsg::FlexivCmd &t_cmd) override {
 
@@ -596,25 +766,25 @@ struct RealRobot : Robot {
         std::cout << "Opening gripper..." << std::endl;
         gripper_openning = true;
         spdlog::info("updating _state_stop_for_gripper");
-        state_msg.get(_state_stop_for_gripper);
+        q_stop_for_gripper =
+            Eigen::VectorXd::Map(state_msg.get().q().data(), 7);
       }
 
       else if (!is_gripper_closed() && t_cmd.g_cmd() == std::string("close")) {
         gripper.Move(gripper_width_close, gripper_velocity, gripper_max_force);
         gripper_closing = true;
         spdlog::info("start closing motion: updating _state_stop_for_gripper");
-        state_msg.get(_state_stop_for_gripper);
+        q_stop_for_gripper =
+            Eigen::VectorXd::Map(state_msg.get().q().data(), 7);
       }
 
       if (gripper_openning || gripper_closing) {
         if (overwrite_user_cmd_when_gripper_moving) {
           std::cout << "gripper is moving, overriting cmd" << std::endl;
-          compute_default_cmd(_state_stop_for_gripper, _cmd);
-          FlexivMsg::FlexivState tmp_state;
-          state_msg.get(tmp_state);
-
-          if (euclidean_distance(_state_stop_for_gripper.q(), tmp_state.q()) >
-              .2) {
+          compute_default_cmd(q_stop_for_gripper, _cmd);
+          FlexivMsg::FlexivState tmp_state = state_msg.get();
+          Eigen::VectorXd q = Eigen::VectorXd::Map(tmp_state.q().data(), 7);
+          if ((q_stop_for_gripper - q).norm() > .2) {
             throw_pretty("The gripper is moving, but the stop state is too far "
                          "from the current state");
           }
@@ -639,9 +809,16 @@ struct RealRobot : Robot {
 
   bool is_gripper_moving() { return gripper.moving(); }
 
-  virtual void get_cmd(FlexivMsg::FlexivCmd &cmd) override { cmd_msg.get(cmd); }
+  virtual FlexivMsg::FlexivCmd get_cmd() override { return cmd_msg.get(); }
+
+  virtual void set_robot_state(const std::string &state) override {
+    robot_state = state;
+  }
+
+  virtual std::string get_robot_state() override { return robot_state; }
 
 private:
+  std::string robot_state = "waiting";
   std::string initial_gripper_state = "closed";
 
   bool q_gripper_is_moving = false;
@@ -659,14 +836,15 @@ private:
 
   SyncData<FlexivMsg::FlexivCmd> cmd_msg;
   SyncData<FlexivMsg::FlexivState> state_msg;
-  FlexivMsg::FlexivState _state_stop_for_gripper;
+  Eigen::VectorXd q_stop_for_gripper;
+
   std::vector<double> q_min;
   std::vector<double> q_max;
   bool overwrite_user_cmd_when_gripper_moving = true;
 
   std::vector<double> tau_min;
   std::vector<double> tau_max;
-  bool check_collisions = true;
+  bool check_collisions = false;
   bool gripper_available = true;
 
   /*bool gripper_is_moving = false;*/
@@ -769,34 +947,38 @@ private:
       return;
     } else {
 
-      if (grav_comp_with_pinocchio) {
-        // compute gravity compenstation with pinocchio
-        pinocchio::computeGeneralizedGravity(
-            model, data, Eigen::VectorXd::Map(q.data(), q.size()));
+      if (!cmd.tau_ff_with_gravity()) {
 
-        std::vector<double> final_torque = torque;
-        for (size_t i = 0; i < 7; i++) {
-          final_torque[i] += data.g[i];
+        if (grav_comp_with_pinocchio) {
+          // compute gravity compenstation with pinocchio
+          pinocchio::computeGeneralizedGravity(
+              model, data, Eigen::VectorXd::Map(q.data(), q.size()));
+
+          std::vector<double> torque_w_grav = torque;
+          for (size_t i = 0; i < 7; i++) {
+            torque_w_grav[i] += data.g[i];
+          }
+
+          /*std::cout << "final torque would be " << std::endl;*/
+          /*print_vector(final_torque);*/
+          /*robot.StreamJointTorque(torque, false);*/
+
+          /*spdlog::info("sending torque");*/
+          /*print_vector(torque);*/
+          robot.StreamJointTorque(torque_w_grav, false);
         }
 
-        /*std::cout << "final torque would be " << std::endl;*/
-        /*print_vector(final_torque);*/
-        /*robot.StreamJointTorque(torque, false);*/
-
-        /*spdlog::info("sending torque");*/
-        /*print_vector(torque);*/
-        robot.StreamJointTorque(final_torque, false);
+        else {
+          /*spdlog::info("sending torque");*/
+          /*print_vector(torque);*/
+          robot.StreamJointTorque(torque);
+        }
+      } else {
+        robot.StreamJointTorque(torque, false);
       }
 
-      else {
-
-        /*spdlog::info("sending torque");*/
-        /*print_vector(torque);*/
-        robot.StreamJointTorque(torque);
-      }
+      // check that the torque is inside limits
     }
-
-    // check that the torque is inside limits
   }
 
   virtual void _send_cmd_position(const FlexivMsg::FlexivCmd &cmd) {
@@ -905,61 +1087,66 @@ private:
     }
   }
 
-  virtual void _get_state(FlexivMsg::FlexivState &state) {
+  virtual FlexivMsg::FlexivState _get_state() {
+    FlexivMsg::FlexivState state_out;
     std::string time = get_current_timestamp();
-    state.timestamp(time);
+    state_out.timestamp(time);
 
-    auto& q = robot.states().q;
-    auto& dq = robot.states().dtheta;
-    auto& tau = robot.states().tau;
-    auto& ft_sensor = robot.states().ft_sensor_raw;
+    auto &q = robot.states().q;
+    auto &dq = robot.states().dtheta;
+    auto &tau = robot.states().tau;
+    auto &ft_sensor = robot.states().ft_sensor_raw;
 
-    if (q.size() == state.q().size()) {
-      std::copy(q.begin(), q.end(), state.q().begin());
+    // add the special state of the robot.
+    //
+
+    state_out.state() = robot_state;
+
+    if (q.size() == state_out.q().size()) {
+      std::copy(q.begin(), q.end(), state_out.q().begin());
     } else {
       throw_pretty("Vector size does not match array size!");
     }
-    if (dq.size() == state.dq().size()) {
-      std::copy(dq.begin(), dq.end(), state.dq().begin());
+    if (dq.size() == state_out.dq().size()) {
+      std::copy(dq.begin(), dq.end(), state_out.dq().begin());
     } else {
 
       /*robot.Stop();*/
       throw_pretty("Vector size does not match array size!");
     }
-    if (tau.size() == state.tau().size()) {
-      std::copy(tau.begin(), tau.end(), state.tau().begin());
+    if (tau.size() == state_out.tau().size()) {
+      std::copy(tau.begin(), tau.end(), state_out.tau().begin());
     } else {
       throw_pretty("Vector size does not match array size!");
     }
 
-    if (ft_sensor.size() == state.ft_sensor().size()) {
-      std::copy(ft_sensor.begin(), ft_sensor.end(), state.ft_sensor().begin());
+    if (ft_sensor.size() == state_out.ft_sensor().size()) {
+      std::copy(ft_sensor.begin(), ft_sensor.end(),
+                state_out.ft_sensor().begin());
     } else {
       throw_pretty("Vector size does not match array size!");
     }
-
 
     // add info about the gripper
 
     if (gripper_available) {
-      state.g_moving() = gripper.moving();
-      state.g_force() = gripper.states().force;
-      state.g_width() = gripper.states().width;
+      state_out.g_moving() = gripper.moving();
+      state_out.g_force() = gripper.states().force;
+      state_out.g_width() = gripper.states().width;
       if (gripper_closing) {
-        state.g_state() = "closing";
+        state_out.g_state() = "closing";
       } else if (gripper_openning) {
-        state.g_state() = "openning";
+        state_out.g_state() = "openning";
       } else if (is_gripper_closed()) {
-        state.g_state() = "closed";
+        state_out.g_state() = "closed";
       } else if (is_gripper_open()) {
-        state.g_state() = "open";
+        state_out.g_state() = "open";
       } else {
-        state.g_state() = "unknown";
+        state_out.g_state() = "unknown";
       }
     }
 
     if (check_collisions) {
-
       Eigen::VectorXd _q = Eigen::VectorXd::Map(q.data(), q.size());
 
       bool is_collision = pinocchio::computeCollisions(model, data, geom_model,
@@ -970,9 +1157,49 @@ private:
         throw_pretty("The current state is very close to collision!");
       }
     }
+    return state_out;
   }
 };
 
+std::optional<FlexivMsg::FlexivCmd>
+read_last_cmd(dds::sub::DataReader<FlexivMsg::FlexivCmd> &reader) {
+  FlexivMsg::FlexivCmd cmd;
+  bool good_msg = false;
+
+  dds::sub::LoanedSamples<FlexivMsg::FlexivCmd> samples;
+
+  /* Try taking samples from the reader. */
+  samples = reader.take();
+
+  if (samples.length() > 0) {
+    /* Use an iterator to run over the set of samples. */
+    dds::sub::LoanedSamples<FlexivMsg::FlexivCmd>::const_iterator sample_iter;
+    for (sample_iter = samples.begin(); sample_iter < samples.end();
+         ++sample_iter) {
+      /* Get the message and sample information. */
+      const FlexivMsg::FlexivCmd &msg = sample_iter->data();
+      const dds::sub::SampleInfo &info = sample_iter->info();
+
+      /* Sometimes a sample is read, only to indicate a data
+       * state change (which can be found in the info). If
+       * that's the case, only the key value of the sample
+       * is set. The other data parts are not.
+       * Check if this sample has valid data. */
+      if (info.valid()) {
+        good_msg = true;
+        cmd = msg;
+      }
+    }
+  }
+
+  if (good_msg) {
+    return cmd;
+  } else {
+    return {};
+  }
+}
+
+// TODO: check if robot is operating!!!
 int main(int argc, char *argv[]) {
 
   if (argc != 4) {
@@ -992,10 +1219,10 @@ int main(int argc, char *argv[]) {
 
     std::cout << "=== [Subscriber] Create reader." << std::endl;
 
-    double dt = .001;
-
-    double stop_dt_if_no_msg_ms = 100;
-    double max_time_s = 1000;
+    const double dt = .001;
+    const bool go_home = false;
+    double stop_dt_if_no_msg_ms = 50;
+    double max_time_s = std::numeric_limits<double>::infinity() ; 
     double dt_us = dt * 1e6;
 
     /* First, a domain participant is needed.
@@ -1025,8 +1252,9 @@ int main(int argc, char *argv[]) {
     std::cout << "=== [Subscriber] Wait for message." << std::endl;
 
     FlexivMsg::FlexivCmd cmd_msg;
-    FlexivMsg::FlexivState state_msg, state_last_good_cmd;
+    FlexivMsg::FlexivState state_msg;
     std::vector<double> last_good_state;
+    Eigen::VectorXd waiting_q(7);
 
     std::shared_ptr<Robot> robot;
 
@@ -1048,94 +1276,112 @@ int main(int argc, char *argv[]) {
       else {
         throw_pretty("Operation mode not implemented");
       }
-      bool go_home = true;
-
-      robot = std::make_shared<RealRobot>(robot_serial_number, t_robot_mode,
-                                          go_home);
+      robot = std::make_shared<RealRobot>(robot_serial_number, t_robot_mode);
     }
 
-    robot->get_state(state_msg);
-    writer.write(state_msg);
-    robot->get_cmd(cmd_msg);
-    state_last_good_cmd = state_msg;
-    robot->send_cmd(cmd_msg);
-
-    std::cout << "First state msg is \n" << state_msg << std::endl;
-    std::cout << "First cmd msg is \n" << cmd_msg << std::endl;
-
     robot->start();
+    state_msg = robot->get_state();
+    waiting_q =
+        Eigen::VectorXd::Map(state_msg.q().data(), state_msg.q().size());
+    std::cout << "First state msg is \n" << state_msg << std::endl;
+    writer.write(state_msg);
 
     auto tic = std::chrono::high_resolution_clock::now();
     auto last_msg_time = std::chrono::high_resolution_clock::now();
-    bool warning_send = false;
-    bool good_msg_send = false;
     std::vector<double> time_loop_us_vec;
 
-    while (std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::high_resolution_clock::now() - tic)
-                       .count() /
-                   1000. <
-               max_time_s &&
-           !g_stop_sched) {
+    if (go_home) {
+      robot->set_robot_state("going-home");
+      spdlog::info("Mode: Going home");
+    } else {
+      robot->set_robot_state("waiting");
+      spdlog::info("Mode: Waiting");
+    }
+
+    auto elapsed_s = [&] {
+      return std::chrono::duration_cast<std::chrono::milliseconds>(
+                 std::chrono::high_resolution_clock::now() - tic)
+                 .count() /
+             1000.;
+    };
+
+    while (elapsed_s() < max_time_s && !g_stop_sched && robot->ok()) {
 
       auto tic_loop = std::chrono::high_resolution_clock::now();
 
-      if (std::chrono::duration_cast<std::chrono::milliseconds>(tic_loop -
+      std::optional<FlexivMsg::FlexivCmd> maybe_cmd = read_last_cmd(reader);
+
+      if (maybe_cmd) {
+        last_msg_time = tic_loop;
+        cmd_msg = *maybe_cmd;
+        std::cout << "Received command" << std::endl;
+        std::cout << cmd_msg << std::endl;
+      }
+
+      if (robot->get_robot_state() == "user" && !maybe_cmd &&
+          std::chrono::duration_cast<std::chrono::milliseconds>(tic_loop -
                                                                 last_msg_time)
-              .count() > stop_dt_if_no_msg_ms) {
+                  .count() > stop_dt_if_no_msg_ms) {
+        // change mode!!
+        spdlog::info(
+            "No message received for a while -- entering waiting mode");
+        waiting_q =
+            Eigen::VectorXd::Map(state_msg.q().data(), state_msg.q().size());
+        robot->set_robot_state("waiting");
+      }
 
+      if ((robot->get_robot_state() == "waiting" ||
+           robot->get_robot_state() == "waiting-home") &&
+          maybe_cmd) {
+        spdlog::info("Received command -- entering user mode");
+        robot->set_robot_state("user");
+      }
+
+      if (robot->get_robot_state() == "user" && maybe_cmd) {
+        std::cout << "checing ... " << std::endl;
+        if (cmd_msg.special_cmd() == "go-home") {
+          spdlog::info("Received go-home command");
+          robot->set_robot_state("going-home");
+        }
+      }
+
+      if (robot->get_robot_state() == "going-home") {
+        // Check if I am already home!
+
+        if (robot->is_home()) {
+          spdlog::info("Already home");
+          spdlog::info("Entering waiting mode");
+          robot->set_robot_state("waiting-home");
+        } else {
+          std::cout << "computing go gome cmd" << std::endl;
+          robot->compute_home_cmd(state_msg, cmd_msg);
+        }
+      }
+
+      if (robot->get_robot_state() == "waiting") {
         if (operation_mode == 2) {
-          robot->compute_default_cmd(state_last_good_cmd, cmd_msg);
+          robot->compute_default_cmd(waiting_q, cmd_msg);
         } else if (operation_mode == 1) {
-          robot->compute_default_cmd(state_msg, cmd_msg);
-        }
-
-        if (!warning_send) {
-          std::cout << "No message received in " << stop_dt_if_no_msg_ms
-                    << " ms. Computing a default message" << std::endl;
-          warning_send = true;
-          good_msg_send = false;
+          throw_pretty("Joint position mode not implemented");
+          /*robot->compute_default_cmd(state_msg, cmd_msg);*/
         }
       }
 
-      /* For this example, the reader will return a set of messages (aka
-       * Samples). There are other ways of getting samples from reader.
-       * See the various read() and take() functions that are present. */
-      dds::sub::LoanedSamples<FlexivMsg::FlexivCmd> samples;
-
-      /* Try taking samples from the reader. */
-      samples = reader.take();
-
-      if (samples.length() > 0) {
-        /* Use an iterator to run over the set of samples. */
-        dds::sub::LoanedSamples<FlexivMsg::FlexivCmd>::const_iterator
-            sample_iter;
-        for (sample_iter = samples.begin(); sample_iter < samples.end();
-             ++sample_iter) {
-          /* Get the message and sample information. */
-          const FlexivMsg::FlexivCmd &msg = sample_iter->data();
-          const dds::sub::SampleInfo &info = sample_iter->info();
-
-          /* Sometimes a sample is read, only to indicate a data
-           * state change (which can be found in the info). If
-           * that's the case, only the key value of the sample
-           * is set. The other data parts are not.
-           * Check if this sample has valid data. */
-          if (info.valid()) {
-            cmd_msg = msg;
-            state_last_good_cmd = state_msg; // save the last good state!
-            last_msg_time = std::chrono::high_resolution_clock::now();
-            if (!good_msg_send) {
-              good_msg_send = true;
-              warning_send = false;
-            }
-          }
+      if (robot->get_robot_state() == "waiting-home") {
+        if (operation_mode == 2) {
+          robot->compute_default_cmd(robot->qhome, cmd_msg);
+        } else if (operation_mode == 1) {
+          throw_pretty("Joint position mode not implemented");
+          /*robot->compute_default_cmd(state_msg, cmd_msg);*/
         }
       }
 
+      /*std::cout << "final cmd is" << std::endl;*/
+      /*std::cout << cmd_msg << std::endl;*/
       robot->send_cmd(cmd_msg);
-      robot->get_state(state_msg);
-      /*std::cout << "writing state msg" << std::endl;*/
+      state_msg = robot->get_state();
+      // lets add semantic information in state msg!
+      state_msg.state(robot->get_robot_state());
       writer.write(state_msg);
 
       int time_loop_us =
@@ -1145,7 +1391,7 @@ int main(int argc, char *argv[]) {
 
       time_loop_us_vec.push_back(time_loop_us);
       if (time_loop_us > 1e6 * dt) {
-        std::cout << "Loop took too long: " << time_loop_us << " us"
+        std::cout << "Our Loop took too long: " << time_loop_us << " us"
                   << std::endl;
       }
 
@@ -1169,7 +1415,6 @@ int main(int argc, char *argv[]) {
                                  time_loop_us_vec.end(), 0) /
                      time_loop_us_vec.size()
               << std::endl;
-
   } catch (const dds::core::Exception &e) {
     std::cerr << "=== [Subscriber] DDS exception: " << e.what() << std::endl;
     return EXIT_FAILURE;

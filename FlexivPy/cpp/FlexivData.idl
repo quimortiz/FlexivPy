@@ -8,6 +8,8 @@ module FlexivMsg {
         int32 mode;
         string g_cmd;
         string timestamp;
+        string special_cmd;
+        boolean tau_ff_with_gravity;
     };
 
     struct FlexivState {
@@ -20,6 +22,7 @@ module FlexivMsg {
         boolean g_moving;
         double g_force;
         double g_width;
+        string state;
     };
 
     struct FlexivImage {
