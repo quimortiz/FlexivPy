@@ -942,7 +942,7 @@ class GoEndEffectorPose():
 
 class JointFloating():
     def __init__(self): 
-        self.kv = .001 * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+        self.kv = 1./4. * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
 
     def setup(self,s):
         pass

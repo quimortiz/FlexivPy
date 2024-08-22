@@ -21,7 +21,7 @@ import time
 
 from cyclonedds.domain import DomainParticipant
 from cyclonedds.topic import Topic
-from FlexivPy.robot.dds.flexiv_messages import FlexivState, FlexivCmd, FlexivImage
+from FlexivPy.robot.dds.flexiv_messages import  EnvImage
 
 import rerun as rr
 from FlexivPy.robot.dds.subscriber import SubscriberNode
@@ -41,9 +41,9 @@ class ImagePlotter( SubscriberNode ):
     def __init__(self) :
 
         super().__init__(topic_names=
-                         ['FlexivImage'],
-                         topic_types= [FlexivImage],
-                         dt=.1,
+                         ['EnvImage'],
+                         topic_types= [EnvImage],
+                         dt=.05,
                          max_time_s=100, 
                          warning_dt=.2,
                          messages_to_keep=1)
@@ -54,8 +54,8 @@ class ImagePlotter( SubscriberNode ):
         if len(self.message_queue) == 1:
             msg = self.message_queue[0][0]
             if msg is not None:
-                # frame = cv2.imdecode(msg.data, 1)
-                # cv2.imshow('Received Image', frame)
+                print('message received')
+                print(msg)
                 np_array = np.frombuffer(bytes(msg.data), dtype=np.uint8)
                 frame = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
                 cv2.imshow("Frame", frame)

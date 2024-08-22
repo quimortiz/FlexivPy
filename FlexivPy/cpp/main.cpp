@@ -888,7 +888,8 @@ private:
     if (euclidean_norm(target_vel) > max_norm_vel ||
         inf_norm(target_vel) > max_norm_vel / 2.) {
 
-      /*robot.Stop();*/
+      std::cout << "target vel is " << std::endl;
+      print_vector(target_vel);
       throw_pretty("Velocity norm is too high");
     }
 

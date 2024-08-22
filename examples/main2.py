@@ -29,15 +29,26 @@ robot = robot_client.Flexiv_client( render=False, create_sim_server=False)
 # controller = easy_controllers.GoHomeDefault()
 
 # controller = easy_controllers.GoJointConfiguration(
-#         qdes = np.array([ 0.000, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000 ]) , 
-#         max_v = .2 , 
-#         max_extra_time_rel = .1)
+#         qdes = np.array([ 0.0, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000 ]) , 
+#         max_v = .5, 
+#         max_extra_time_rel = .2)
+
+
+controller = easy_controllers.JointFloating()
+
+status = easy_controllers.run_controller(robot, controller,  dt=.005 , max_time = 120)
+print("status", status)
+
+adfa
 #
-# easy_controllers.run_controller(robot, controller,  dt=.01 , max_time = 10)
+# import sys
+# sys.exit()
+
+
 #
 # input('Press enter to continue')
 
-controller = easy_controllers.JointFloating()
+# controller = easy_controllers.JointFloating()
 
 # robot_model = model_robot.FlexivModel(
 #     render=False,
@@ -58,6 +69,7 @@ try:
     while True:
         tic = time.time()
         s = robot.get_robot_state()
+        print('current state', s )
         states.append(s)
         
         if not controller.applicable(s , tic - tic_start):
