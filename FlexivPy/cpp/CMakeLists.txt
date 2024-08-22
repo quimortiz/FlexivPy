@@ -34,15 +34,21 @@ idlcxx_generate(TARGET flexivdata FILES FlexivData.idl WARNINGS no-implicit-exte
 
 add_executable(main main.cpp)
 
-target_compile_definitions(main PRIVATE PINOCCHIO_WITH_HPP_FCL PINOCCHIO_WITH_URDFDOM)
+# add the flag PINOCCHIO_ENABLE_COMPATIBILITY_WITH_VERSION_2
+
+
+
+
+
+target_compile_definitions(main PRIVATE PINOCCHIO_WITH_HPP_FCL PINOCCHIO_WITH_URDFDOM PINOCCHIO_ENABLE_COMPATIBILITY_WITH_VERSION_2)
 target_link_libraries(main CycloneDDS-CXX::ddscxx flexivdata helloworlddata flexiv::flexiv_rdk pinocchio::pinocchio)
 
 
 
-add_executable(gravity_comp gravity_comp.cpp)
-
-target_compile_definitions(gravity_comp PRIVATE PINOCCHIO_WITH_HPP_FCL PINOCCHIO_WITH_URDFDOM)
-target_link_libraries(gravity_comp CycloneDDS-CXX::ddscxx flexivdata helloworlddata flexiv::flexiv_rdk pinocchio::pinocchio)
+# add_executable(gravity_comp gravity_comp.cpp)
+#
+# target_compile_definitions(gravity_comp PRIVATE PINOCCHIO_WITH_HPP_FCL PINOCCHIO_WITH_URDFDOM)
+# target_link_libraries(gravity_comp CycloneDDS-CXX::ddscxx flexivdata helloworlddata flexiv::flexiv_rdk pinocchio::pinocchio)
 
 
 # add flag PINOCCHIO_WITH_HPP_FCL  

@@ -55,7 +55,9 @@
 #include "pinocchio/algorithm/geometry.hpp"
 #include "pinocchio/multibody/fcl.hpp"
 
+#ifdef CHECK_COLLISIONS
 #include "pinocchio/collision/collision.hpp"
+#endif
 
 #include <atomic>
 
@@ -183,6 +185,10 @@ struct Robot {
   virtual void stop() {}
   virtual void get_cmd(FlexivMsg::FlexivCmd &cmd) { (void)cmd; }
 
+  virtual void set_using_default_cmd(bool using_default_cmd) {
+    (void)using_default_cmd;
+  }
+
   virtual ~Robot() {}
 };
 
@@ -302,13 +308,16 @@ struct RealRobot : Robot {
   flexiv::rdk::Mode robot_mode = flexiv::rdk::Mode::RT_JOINT_POSITION;
   std::unique_ptr<flexiv::rdk::Scheduler> scheduler;
   bool fake_commands = false;
-  bool grav_comp_with_pinocchio = true; // TODO: with grav comp in pinocchio,
+  bool grav_comp_with_pinocchio = false; // TODO: with grav comp in pinocchio,
   // i have observed some issues if the scheduler fails!
 
   pinocchio::Model model;
   pinocchio::Data data;
+
+#ifdef CHECK_COLLISIONS
   pinocchio::GeometryData geom_data;
   pinocchio::GeometryModel geom_model;
+#endif
 
   // it true, we just print the commands to the screen.
 
@@ -411,6 +420,8 @@ struct RealRobot : Robot {
 
     pinocchio::urdf::buildModel(urdf, model);
     data = pinocchio::Data(model);
+
+#ifdef CHECK_COLLISIONS
     pinocchio::urdf::buildGeom(model, urdf, pinocchio::COLLISION, geom_model);
 
     geom_model.addAllCollisionPairs();
@@ -419,6 +430,7 @@ struct RealRobot : Robot {
     }
 
     geom_data = pinocchio::GeometryData(geom_model);
+#endif
 
     // Clear fault on the connected robot if any
     if (robot.fault()) {
@@ -498,7 +510,8 @@ struct RealRobot : Robot {
 
     // Tau max from robot is:
     /*261 261 123 123 57 57 57 */
-    tau_max = {100, 100, 50, 50, 30, 30, 30};
+    /*tau_max = {100, 100, 50, 50, 30, 30, 30};*/
+    tau_max = {150, 150, 70, 70, 50, 50, 50};
     for (size_t i = 0; i < 7; i++) {
       tau_min[i] = -tau_max[i];
     }
@@ -516,7 +529,6 @@ struct RealRobot : Robot {
     gripper.Init();
     spdlog::info("Initialization complete");
     last_gripper_time = std::chrono::system_clock::now();
-
 
     spdlog::info("make sure that the gripper is " + initial_gripper_state);
 
@@ -549,6 +561,7 @@ struct RealRobot : Robot {
 
     state_msg.update(tmp_state);
     cmd_msg.update(tmp_cmd);
+    set_using_default_cmd(true);
   }
 
   void switch_mode_sync(flexiv::rdk::Mode t_robot_mode) {
@@ -609,7 +622,8 @@ struct RealRobot : Robot {
       if (gripper_openning || gripper_closing) {
         if (overwrite_user_cmd_when_gripper_moving) {
           std::cout << "gripper is moving, overriting cmd" << std::endl;
-          compute_default_cmd(_state_stop_for_gripper, _cmd);
+          compute_default_cmd(_state_stop_for_gripper, cmd);
+          set_using_default_cmd(true);
           FlexivMsg::FlexivState tmp_state;
           state_msg.get(tmp_state);
 
@@ -641,8 +655,14 @@ struct RealRobot : Robot {
 
   virtual void get_cmd(FlexivMsg::FlexivCmd &cmd) override { cmd_msg.get(cmd); }
 
+  virtual void set_using_default_cmd(bool t_using_default_cmd) override {
+    using_default_cmd = t_using_default_cmd;
+  }
+
 private:
-  std::string initial_gripper_state = "closed";
+  std::string initial_gripper_state = "open";
+  bool gravity_comp_flexiv = false;
+  std::atomic<bool> using_default_cmd = true;
 
   bool q_gripper_is_moving = false;
   std::chrono::time_point<std::chrono::system_clock> last_gripper_time;
@@ -676,8 +696,8 @@ private:
   FlexivMsg::FlexivState
       _state; // just to avoid memory allocation. Do not use outside callback!
 
-  double max_norm_vel = 6;
-  double max_norm_acc = 2;
+  double max_norm_vel = 7.;
+  double max_norm_acc = 2.;
   double max_distance = .3;
 
   virtual void _send_cmd_torque(const FlexivMsg::FlexivCmd &cmd) {
@@ -710,6 +730,7 @@ private:
     if (euclidean_norm(target_vel) > max_norm_vel ||
         inf_norm(target_vel) > max_norm_vel / 2.) {
 
+      print_vector(target_vel);
       /*robot.Stop();*/
       throw_pretty("Velocity norm is too high");
     }
@@ -765,6 +786,9 @@ private:
     if (fake_commands) {
       std::cout << "Sending command to robot" << std::endl;
       std::cout << "Torque: ";
+      std::cout << "Grav comp Pin: " << grav_comp_with_pinocchio << std::endl;
+      std::cout << "gravity_comp_flexiv || using_default_cmd"
+                << bool(gravity_comp_flexiv || using_default_cmd) << std::endl;
       print_vector(torque);
       return;
     } else {
@@ -789,10 +813,11 @@ private:
       }
 
       else {
-
-        /*spdlog::info("sending torque");*/
-        /*print_vector(torque);*/
-        robot.StreamJointTorque(torque);
+        if (gravity_comp_flexiv || using_default_cmd) {
+          robot.StreamJointTorque(torque);
+        } else {
+          robot.StreamJointTorque(torque, false);
+        }
       }
     }
 
@@ -909,10 +934,10 @@ private:
     std::string time = get_current_timestamp();
     state.timestamp(time);
 
-    auto& q = robot.states().q;
-    auto& dq = robot.states().dtheta;
-    auto& tau = robot.states().tau;
-    auto& ft_sensor = robot.states().ft_sensor_raw;
+    auto &q = robot.states().q;
+    auto &dq = robot.states().dtheta;
+    auto &tau = robot.states().tau;
+    auto &ft_sensor = robot.states().ft_sensor_raw;
 
     if (q.size() == state.q().size()) {
       std::copy(q.begin(), q.end(), state.q().begin());
@@ -938,7 +963,6 @@ private:
       throw_pretty("Vector size does not match array size!");
     }
 
-
     // add info about the gripper
 
     if (gripper_available) {
@@ -958,6 +982,7 @@ private:
       }
     }
 
+#ifdef CHECK_COLLISIONS
     if (check_collisions) {
 
       Eigen::VectorXd _q = Eigen::VectorXd::Map(q.data(), q.size());
@@ -970,6 +995,8 @@ private:
         throw_pretty("The current state is very close to collision!");
       }
     }
+
+#endif
   }
 };
 
@@ -1054,6 +1081,7 @@ int main(int argc, char *argv[]) {
                                           go_home);
     }
 
+    robot->set_using_default_cmd(true);
     robot->get_state(state_msg);
     writer.write(state_msg);
     robot->get_cmd(cmd_msg);
@@ -1084,9 +1112,11 @@ int main(int argc, char *argv[]) {
                                                                 last_msg_time)
               .count() > stop_dt_if_no_msg_ms) {
 
+        robot->set_using_default_cmd(true);
         if (operation_mode == 2) {
           robot->compute_default_cmd(state_last_good_cmd, cmd_msg);
         } else if (operation_mode == 1) {
+
           robot->compute_default_cmd(state_msg, cmd_msg);
         }
 
@@ -1122,6 +1152,7 @@ int main(int argc, char *argv[]) {
            * is set. The other data parts are not.
            * Check if this sample has valid data. */
           if (info.valid()) {
+            robot->set_using_default_cmd(false);
             cmd_msg = msg;
             state_last_good_cmd = state_msg; // save the last good state!
             last_msg_time = std::chrono::high_resolution_clock::now();
