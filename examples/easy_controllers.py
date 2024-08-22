@@ -20,6 +20,12 @@ class ControllerStatus(Enum):
     ERROR = 4
 
 
+def run_controller_sync( robot, controller,  dt , max_time  ):
+    """
+
+    """
+    pass
+
 def run_controller( robot, controller,  dt , max_time  ):
     s = robot.get_robot_state()
     controller.setup(s)

@@ -9,6 +9,7 @@ from scipy.spatial.transform import Rotation
 import os
 import yaml
 import pinocchio as pin
+import FlexivPy.robot.dds.flexiv_messages as flexiv_messages
 
 ASSETS_PATH = "FlexivPy/assets/"
 
@@ -185,13 +186,12 @@ class FlexivSim:
 
     def set_u(self):
         cmd = self.cmd
-        tau = (
-            cmd["tau_ff"]
-            + cmd["kp"] * (cmd["q"] - self.get_robot_joints())
-            + cmd["kv"] * (cmd["dq"] - self.get_robot_vel())
-        )
+        tau =  (
+            np.array(cmd.tau_ff)
+            + np.array(cmd.kp) * (np.array(cmd.q) - self.get_robot_joints())
+            + np.array(cmd.kv) * (np.array(cmd.dq) - self.get_robot_vel()) )
 
-        if self.gravity_comp:
+        if not cmd.tau_ff_with_gravity:
             tau += pin.computeGeneralizedGravity(
                 self.pin_model.model, self.pin_model.data, 
                 self.get_robot_joints())
@@ -200,12 +200,13 @@ class FlexivSim:
             tau -= self.kv_damping * self.get_robot_vel()
 
         if self.has_gripper:
-            if cmd['g_cmd'] == 'close':
+            if cmd.g_cmd == 'close':
                 tau = np.append(tau, 255)
             else:
                 tau = np.append(tau, 0)
 
         self.data.ctrl = tau
+
 
     def set_cmd(self, cmd):
         """
@@ -213,11 +214,20 @@ class FlexivSim:
         """
         self.cmd = cmd
 
+    def get_robot_tau(self):
+        return self.data.ctrl[:7]
+
+
     def get_robot_state(self):
-        return {"q": self.get_robot_joints(), "dq": self.get_robot_vel(), "g_state": self.get_gripper_state(),
-                "g_moving": False,
-                "g_force": -1,
-                "g_width": -1 }
+        return flexiv_messages.FlexivState(
+            q = self.get_robot_joints(),
+            dq = self.get_robot_vel(),
+            g_state = self.get_gripper_state(),
+            tau = self.get_robot_tau(),
+            g_moving = False,
+                g_force= -1,
+                g_width= -1 )
+
 
 
     def get_env_image(self):

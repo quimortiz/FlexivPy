@@ -1134,6 +1134,7 @@ private:
       state_out.g_moving() = gripper.moving();
       state_out.g_force() = gripper.states().force;
       state_out.g_width() = gripper.states().width;
+      // holding, openning, closing, open, closed
       if (gripper_closing) {
         state_out.g_state() = "closing";
       } else if (gripper_openning) {
@@ -1315,8 +1316,6 @@ int main(int argc, char *argv[]) {
       if (maybe_cmd) {
         last_msg_time = tic_loop;
         cmd_msg = *maybe_cmd;
-        std::cout << "Received command" << std::endl;
-        std::cout << cmd_msg << std::endl;
       }
 
       if (robot->get_robot_state() == "user" && !maybe_cmd &&

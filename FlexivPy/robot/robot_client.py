@@ -32,7 +32,7 @@ class Flexiv_client:
     def __init__(
         self, dt=0.001, render=False, render_images=True, create_sim_server=False, server_config_file="",
         xml_path=None, urdf=None, meshes_dir=None, joints=None, 
-        base_path="", gravity_comp=True, has_gripper=False
+        base_path="", has_gripper=False
 
     ):
 
@@ -82,8 +82,6 @@ class Flexiv_client:
             if joints:
                 cmd += ["--joints"] + joints
 
-            if not gravity_comp:
-                cmd += ["--no_gravity_comp"]
             if has_gripper:
                 cmd += ["--has_gripper"]
 

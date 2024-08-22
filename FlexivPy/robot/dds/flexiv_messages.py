@@ -20,6 +20,8 @@ class FlexivCmd(idl.IdlStruct):
     kv: array[types.float64, 7]= field(default_factory=lambda: 7*[.0])
     mode: int32 = 2
     g_cmd: str = "" # "close", "open"
+    g_width: types.float64 = -1
+    g_force: types.float64 = -1
     timestamp: str = ""
     special_cmd: str = "" # "go-home", 
     tau_ff_with_gravity: bool = False
@@ -33,11 +35,11 @@ class FlexivState(idl.IdlStruct):
     tau: array[types.float64, 7]
     ft_sensor: array[types.float64, 6] = field(default_factory=lambda: [.0, .0, .0, .0, .0, .0])
     timestamp: str = ""
-    g_state: str = ""
+    g_state: str = "" # holding, openning, closing, open, closed
     g_moving: bool = False
     g_force: types.float64 = -1
     g_width: types.float64 = -1
-    state: str = "" # going-home, home, user, waiting
+    state: str = "" #  user, waiting
 
 
 

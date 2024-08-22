@@ -7,6 +7,8 @@ module FlexivMsg {
         double kv[7];
         int32 mode;
         string g_cmd;
+        double  g_width;
+        double g_force;
         string timestamp;
         string special_cmd;
         boolean tau_ff_with_gravity;

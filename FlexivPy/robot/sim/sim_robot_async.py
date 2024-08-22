@@ -102,24 +102,10 @@ class FlexivSim_dds_server:
 
     def compute_default_command(self):
 
-        if not self.sim_robot.gravity_comp:
-            default_tau_ff = pin.computeGeneralizedGravity(
-                self.sim_robot.pin_model.model, self.sim_robot.pin_model.data, 
-                self.sim_robot.get_robot_joints())
-        else:
-            default_tau_ff = np.zeros(7)
-        
-        default_cmd = {
-            "tau_ff": default_tau_ff,
-            "q": np.zeros(7),
-            "dq": np.zeros(7),
-            "kp": np.zeros(7),
-            "kv": 10.0 * np.ones(7),
-            "g_cmd": "open",
-            "mode": 2
-        }
+        return FlexivCmd(
+                kv = 10 * np.ones(7),
+        )
 
-        return default_cmd
 
     def run(self):
         time_start = time.time()
@@ -179,30 +165,13 @@ class FlexivSim_dds_server:
                 if not good_satus_send:
                     print("cmd received")
                     good_satus_send = True
-                self.sim_robot.set_cmd(
-                    {
-                        "tau_ff": cmd.tau_ff,
-                        "q": cmd.q,
-                        "dq": cmd.dq,
-                        "kp": cmd.kp,
-                        "kv": cmd.kv,
-                        "g_cmd": cmd.g_cmd
-                    }
-                )
+                self.sim_robot.set_cmd(cmd)
                 # Modify
 
             self.sim_robot.step()
 
             state = self.sim_robot.get_robot_state()
-            msg_out = FlexivState(
-                q=state["q"], dq=state["dq"], tau=np.zeros(7), timestamp=timestamp,
-                        g_state=state["g_state"],
-            g_moving=0.,
-            g_force=0.,
-            g_width=0.,)
-             # Modify
-
-
+            msg_out =  state
             self.writer.write(msg_out)
 
             env_state = self.sim_robot.get_env_state()
@@ -270,7 +239,6 @@ if __name__ == "__main__":
     argp.add_argument("--meshes_dir", type=str, default=None, help="meshes directrory path")
     argp.add_argument("--joints", type=str, nargs='+', default=None, help="Names of the joints")
 
-    argp.add_argument("--no_gravity_comp", action="store_true", help="render the simulation")
 
     argp.add_argument("--has_gripper", action="store_true", help="render the simulation")
 
@@ -295,8 +263,7 @@ if __name__ == "__main__":
     )
 
     robot_sim = sim_robot.FlexivSim(dt=dt, render=args.render, xml_path=args.xml_path, q0=q0, 
-                                    pin_model=robot_model.robot, render_images=args.render_images, joints=args.joints, gravity_comp= not args.no_gravity_comp,
-                                    has_gripper=args.has_gripper)
+                                    pin_model=robot_model.robot, render_images=args.render_images, joints=args.joints, has_gripper=args.has_gripper)
 
     sim = FlexivSim_dds_server( robot_sim, dt, max_time=100.0)
 
