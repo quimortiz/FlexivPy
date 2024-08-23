@@ -1,5 +1,6 @@
 #include "FlexivData.hpp"
 #include "dds/dds.hpp"
+#include <Eigen/src/Core/Matrix.h>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -81,6 +82,10 @@ template <typename T, typename U> double inf_distance(const T &vec1, const U &ve
   }
   return dist;
 }
+
+Eigen::VectorXd create_vector_from_list(const std::initializer_list<double>& values);
+
+
 
 
 void print_vector(const std::vector<double> &vec);

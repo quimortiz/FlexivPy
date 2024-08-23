@@ -1,3 +1,4 @@
+#include <Eigen/src/Core/Matrix.h>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -124,4 +125,14 @@ read_last_cmd(dds::sub::DataReader<FlexivMsg::FlexivCmd> &reader) {
     return {};
   }
 }
+
+Eigen::VectorXd create_vector_from_list(const std::initializer_list<double>& values) {
+    Eigen::VectorXd vec(values.size());
+    int index = 0;
+    for (const auto& value : values) {
+        vec(index++) = value;
+    }
+    return vec;
+}
+
 
