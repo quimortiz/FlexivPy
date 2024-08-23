@@ -59,13 +59,22 @@
 
 using namespace org::eclipse::cyclonedds;
 
-const std::vector<double> kImpedanceKp = {3000.0, 3000.0, 800.0, 800.0,
-                                          200.0,  200.0,  200.0};
-
-const std::vector<double> kImpedanceKd = {80.0, 80.0, 40.0, 40.0,
-                                          8.0,  8.0,  8.0};
-
 std::atomic<bool> g_stop_sched = {false};
+
+/*RobotController(std::string robot_serial_number,*/
+/*                flexiv::rdk::Mode t_robot_mode, bool t_use_gripper,*/
+/*                bool check_collisions, std::string config_file,*/
+/*                std::string base_path)*/
+
+struct RobotControllerArgs {
+  std::string robot_serial_number;
+  flexiv::rdk::Mode robot_mode;
+  bool use_gripper;
+  bool check_collisions;
+  std::string config_file;
+  std::string base_path;
+  bool check_endeff_bounds;
+};
 
 struct RobotController {
 
@@ -181,28 +190,26 @@ struct RobotController {
     std::cout << "stopping gripper" << std::endl;
     gripper.Stop();
   }
-  RobotController(std::string robot_serial_number,
-                  flexiv::rdk::Mode t_robot_mode, bool t_use_gripper,
-                  bool check_collisions)
-      : robot_serial_number(robot_serial_number), robot(robot_serial_number),
-        gripper(robot), use_gripper(t_use_gripper),
-        check_collisions(check_collisions) {
+  RobotController(const RobotControllerArgs &args)
+      : robot_serial_number(args.robot_serial_number),
+        robot(args.robot_serial_number), gripper(robot),
+        use_gripper(args.use_gripper), robot_mode(args.robot_mode),
+        check_collisions(args.check_collisions),
+        robot_config_file(args.config_file),
+        check_endeff_bounds(args.check_endeff_bounds) {
 
-    if (t_use_gripper) {
-      urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/"
-             "flexiv_rizon10s_kinematics_w_gripper_mass.urdf";
+    if (robot_config_file.size()) {
+      parse_config_file(robot_config_file);
+    }
+
+    if (use_gripper) {
+      urdf = base_path + "flexiv_rizon10s_kinematics_w_gripper_mass.urdf";
     } else {
-      urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/"
-             "flexiv_rizon10s_kinematics.urdf";
+      urdf = base_path + "flexiv_rizon10s_kinematics.urdf";
     }
 
     pinocchio::urdf::buildModel(urdf, model);
     data = pinocchio::Data(model);
-
-    p_ub_endff = Eigen::VectorXd(3);
-    p_lb_endff = Eigen::VectorXd(3);
-    p_ub_endff << .8, .8, .9;
-    p_lb_endff << -.1, -.8, .03;
 
     if (use_gripper) {
       endeff_name_for_bound_check = "tcp";
@@ -218,9 +225,8 @@ struct RobotController {
     }
     frame_id_for_bound_check = model.getFrameId(endeff_name_for_bound_check);
 
-    pinocchio::urdf::buildGeom(
-        model, urdf, pinocchio::COLLISION, geom_model,
-        "/home/quim/code/FlexivPy/FlexivPy/assets/meshes/");
+    pinocchio::urdf::buildGeom(model, urdf, pinocchio::COLLISION, geom_model,
+                               base_path + "meshes/");
 
     geom_model.addAllCollisionPairs();
     if (srdf != "") {
@@ -250,24 +256,9 @@ struct RobotController {
 
     robot.SwitchMode(flexiv::rdk::Mode::RT_JOINT_TORQUE);
 
-    // TODO: add joint limits that account for the wall and the table!!
     auto bounds = adjust_limits_interval(.02, q_min, q_max);
-
     q_min = bounds.first;
     q_max = bounds.second;
-
-    tau_min.resize(7);
-    tau_max.resize(7);
-
-    tau_max = {100, 100, 50, 50, 30, 30, 30};
-    for (size_t i = 0; i < 7; i++) {
-      tau_min[i] = -tau_max[i];
-    }
-
-    std::cout << "Tau max from robot is " << std::endl;
-    print_vector(robot.info().tau_max); /*261 261 123 123 57 57 57 */
-    std::cout << "But we limit tau to" << std::endl;
-    print_vector(tau_max);
 
     std::cout << "Real robot created" << std::endl;
 
@@ -297,8 +288,6 @@ struct RobotController {
     auto init_pos = robot.states().q;
     spdlog::info("Initial joint positions are: {}",
                  flexiv::rdk::utility::Vec2Str(init_pos));
-
-    robot_mode = t_robot_mode;
 
     state_msg.update(_get_state());
     Eigen::VectorXd q = Eigen::VectorXd::Map(state_msg.get().q().data(), 7);
@@ -393,14 +382,87 @@ struct RobotController {
 
   virtual void parse_config_file(const std::string &filename) {
 
-    // use yaml to open the file.
-
+    std::cout << "Parsing config file" << filename << std::endl;
     std::ifstream file(filename);
     if (!file.good()) {
       throw_pretty("File not found");
     }
     try {
       YAML::Node config = YAML::LoadFile(filename);
+
+      // Update from YAML if the options exist
+      if (config["kImpedanceKp"]) {
+        kImpedanceKp = config["kImpedanceKp"].as<std::vector<double>>();
+      }
+
+      if (config["kImpedanceKd"]) {
+        kImpedanceKd = config["kImpedanceKd"].as<std::vector<double>>();
+      }
+
+      if (config["p_ub_endff"]) {
+        std::vector<double> p_ub_vec =
+            config["p_ub_endff"].as<std::vector<double>>();
+        p_ub_endff = Eigen::VectorXd::Map(p_ub_vec.data(), p_ub_vec.size());
+      }
+
+      if (config["p_lb_endff"]) {
+        std::vector<double> p_lb_vec =
+            config["p_lb_endff"].as<std::vector<double>>();
+        p_lb_endff = Eigen::VectorXd::Map(p_lb_vec.data(), p_lb_vec.size());
+      }
+
+      if (config["q_min"]) {
+        q_min = config["q_min"].as<std::vector<double>>();
+      }
+
+      if (config["q_max"]) {
+        q_max = config["q_max"].as<std::vector<double>>();
+      }
+
+      if (config["gripper_max_force"]) {
+        gripper_max_force = config["gripper_max_force"].as<double>();
+      }
+
+      if (config["gripper_velocity"]) {
+        gripper_velocity = config["gripper_velocity"].as<double>();
+      }
+
+      if (config["gripper_width_open"]) {
+        gripper_width_open = config["gripper_width_open"].as<double>();
+      }
+
+      if (config["gripper_min_closing_force"]) {
+        gripper_min_closing_force =
+            config["gripper_min_closing_force"].as<double>();
+      }
+
+      if (config["gripper_width_close"]) {
+        gripper_width_close = config["gripper_width_close"].as<double>();
+      }
+
+      if (config["delta_width"]) {
+        delta_width = config["delta_width"].as<double>();
+      }
+
+      if (config["tau_min"]) {
+        tau_min = config["tau_min"].as<std::vector<double>>();
+      }
+
+      if (config["tau_max"]) {
+        tau_max = config["tau_max"].as<std::vector<double>>();
+      }
+
+      if (config["max_norm_vel"]) {
+        max_norm_vel = config["max_norm_vel"].as<double>();
+      }
+
+      if (config["max_norm_acc"]) {
+        max_norm_acc = config["max_norm_acc"].as<double>();
+      }
+
+      if (config["max_distance"]) {
+        max_distance = config["max_distance"].as<double>();
+      }
 
       // lets parse the yaml file!
     } catch (const YAML::BadFile &e) {
@@ -411,12 +473,46 @@ struct RobotController {
   }
 
 private:
+  // numerical values
+  std::string base_path = "FlexivPy/FlexivPy/assets/";
+
+  std::vector<double> kImpedanceKp = {3000.0, 3000.0, 800.0, 800.0,
+                                      200.0,  200.0,  200.0};
+  std::vector<double> kImpedanceKd = {80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0};
+
+  Eigen::VectorXd p_ub_endff = create_vector_from_list({.8, .8, .9});
+  Eigen::VectorXd p_lb_endff = create_vector_from_list({-.1, -.8, .03});
+
+  std::vector<double> q_min = {-1.57,    -2.4,     -2.79257, -2.70527,
+                               -2.96707, -1.39627, -2.96707};
+
+  std::vector<double> q_max = {
+      1.57, .75, 2.79257, 2.70527, 2.96707, 4.53787, 2.96707,
+  };
+
+  double gripper_max_force = 20;
+  double gripper_velocity = 0.1;
+  double gripper_width_open = 0.09;
+  double gripper_min_closing_force = 1;
+  double gripper_width_close = 0.01;
+  double delta_width = .001;
+
+  std::vector<double> tau_min = {-100, -100, -50, -50, -30, -30, -30};
+  std::vector<double> tau_max = {100, 100, 50, 50, 30, 30, 30};
+  double max_norm_vel = 6;
+  double max_norm_acc = 2;
+  double max_distance = .3;
+
+  bool check_endeff_bounds = true;
+  bool check_collisions = false;
+
+  bool fake_commands = false;
+  bool grav_comp_with_pinocchio = true;
+  bool use_gripper = false;
+
   std::chrono::time_point<std::chrono::system_clock> tic_last_gripper_cmd =
       std::chrono::system_clock::now();
 
-  bool check_endeff_bounds = true;
-  Eigen::VectorXd p_ub_endff;
-  Eigen::VectorXd p_lb_endff;
   std::string endeff_name_for_bound_check;
   int frame_id_for_bound_check;
 
@@ -426,34 +522,20 @@ private:
   pinocchio::Data data;
   pinocchio::GeometryData geom_data;
   pinocchio::GeometryModel geom_model;
-
   std::string robot_serial_number;
 
-  std::string urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/"
-                     "flexiv_rizon10s_kinematics.urdf";
-  std::string srdf =
-      "/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.srdf";
+  std::string urdf;
+  std::string srdf;
 
   flexiv::rdk::Robot robot;
   flexiv::rdk::Gripper gripper;
   flexiv::rdk::Mode robot_mode = flexiv::rdk::Mode::RT_JOINT_TORQUE;
   flexiv::rdk::Scheduler scheduler;
-  bool fake_commands = false;
-  bool grav_comp_with_pinocchio = true;
-  bool use_gripper = false;
 
   std::string robot_state = "waiting";
-  std::string initial_gripper_state = "closed";
+  std::string initial_gripper_state = "open";
 
-  bool q_gripper_is_moving = false;
   std::chrono::time_point<std::chrono::system_clock> last_gripper_time;
-  double gripper_dt_s = .01;
-  double gripper_max_force = 20;
-  double gripper_velocity = 0.1;
-  double gripper_width_open = 0.09;
-  double gripper_min_closing_force = 1;
-  double gripper_width_close = 0.00;
-  double delta_width = .001;
 
   bool gripper_openning = false;
   bool gripper_closing = false;
@@ -461,29 +543,6 @@ private:
   SyncData<FlexivMsg::FlexivCmd> cmd_msg;
   SyncData<FlexivMsg::FlexivState> state_msg;
   Eigen::VectorXd q_stop_for_gripper;
-
-  // First Joint: Use 1.57
-
-  // orginal joint limits are
-  /*-2.79257 -2.67037 -2.79257 -2.70527 -2.96707 -1.39627 -2.96707 */
-  /*2.79257 2.67037 2.79257 2.70527 2.96707 4.53787 2.96707 */
-
-  std::vector<double> q_min = {-1.57,    -2.4,     -2.79257, -2.70527,
-                               -2.96707, -1.39627, -2.96707};
-
-  std::vector<double> q_max = {
-      1.57, .75, 2.79257, 2.70527, 2.96707, 4.53787, 2.96707,
-  };
-
-  bool overwrite_user_cmd_when_gripper_moving = true;
-
-  std::vector<double> tau_min;
-  std::vector<double> tau_max;
-  bool check_collisions = false;
-
-  double max_norm_vel = 6;
-  double max_norm_acc = 2;
-  double max_distance = .3;
 
   virtual void _send_cmd_torque(const FlexivMsg::FlexivCmd &cmd) {
 
@@ -760,12 +819,14 @@ int main(int argc, char *argv[]) {
   int control_mode = 2;
   std::string serial_number = "Rizon10s-062147";
   bool use_gripper = false;
-  bool ignore_collisions = true; // TODO!! -- URDF with Collision Meshes!!
+  bool ignore_collisions = false; // TODO!! -- URDF with Collision Meshes!!
+  bool ignore_endeffector_bounds = false;
   double dt = .001;
   double stop_dt_if_no_msg_ms = 50;
   bool profile = false;
   double max_time_s = std::numeric_limits<double>::infinity();
   std::string robot_config_file = "";
+  std::string base_path = "";
 
   // Create an ArgumentParser object with program description
   argparse::ArgumentParser program(
@@ -795,11 +856,17 @@ int main(int argc, char *argv[]) {
       .implicit_value(true)
       .store_into(use_gripper); // Store directly into use_gripper
 
-  program.add_argument("-i", "--ignore_collisions")
+  program.add_argument("-ic", "--ignore_collisions")
       .help("Ignore Collisions")
       .default_value(false)
       .implicit_value(true)
       .store_into(ignore_collisions);
+
+  program.add_argument("-ie", "--ignore_endeffector_bounds")
+      .help("Ignore End Effector Bounds")
+      .default_value(false)
+      .implicit_value(true)
+      .store_into(ignore_endeffector_bounds);
 
   program.add_argument("--dt")
       .help("Time step")
@@ -826,6 +893,11 @@ int main(int argc, char *argv[]) {
       .help("Robot config file")
       .default_value(robot_config_file)
       .store_into(robot_config_file);
+
+  program.add_argument("--path")
+      .help("Base path")
+      .default_value(base_path)
+      .store_into(base_path);
 
   try {
     // Parse the command-line arguments
@@ -889,10 +961,20 @@ int main(int argc, char *argv[]) {
     t_robot_mode = flexiv::rdk::Mode::RT_JOINT_POSITION;
   } else if (control_mode == 2) {
     t_robot_mode = flexiv::rdk::Mode::RT_JOINT_TORQUE;
+  } else {
+    throw_pretty("Mode not implemented");
   }
 
-  auto robot = std::make_shared<RobotController>(
-      serial_number, t_robot_mode, use_gripper, !ignore_collisions);
+  RobotControllerArgs robot_args;
+  robot_args.robot_serial_number = serial_number;
+  robot_args.use_gripper = use_gripper;
+  robot_args.robot_mode = t_robot_mode;
+  robot_args.check_collisions = !ignore_collisions;
+  robot_args.config_file = robot_config_file;
+  robot_args.check_endeff_bounds = !ignore_endeffector_bounds;
+  robot_args.base_path = base_path;
+
+  auto robot = std::make_shared<RobotController>(robot_args);
 
   robot->start();
   state_msg = robot->get_state();
