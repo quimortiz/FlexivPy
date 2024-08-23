@@ -990,3 +990,76 @@ class Stay():
         """
         return False
 
+
+class OpenGripper():
+    def __init__(self):
+        pass
+        
+
+    def setup(self,s):
+        pass
+
+    def get_control(self,state,tic):
+        return  FlexivCmd(g_cmd="open")
+
+    def applicable(self,state,tic):
+        """
+        """
+        return True
+
+    def goal_reached(self,state, tic):
+        """
+        """
+        if state.g_state == "open":
+            return True
+        else: 
+            return False
+
+class CloseGripper():
+    def __init__(self):
+        pass
+        
+
+    def setup(self,s):
+        pass
+
+    def get_control(self,state,tic):
+        return  FlexivCmd(g_cmd="close")
+
+    def applicable(self,state,tic):
+        """
+        """
+        return True
+
+    def goal_reached(self,state, tic):
+        """
+        """
+
+        if state.g_state == "closed" or state.g_state == "holding":
+            return True
+        else: 
+            return False
+
+class StopGripper():
+    def __init__(self):
+        pass
+        
+
+    def setup(self,s):
+        pass
+
+    def get_control(self,state,tic):
+        return  FlexivCmd(g_cmd="stop")
+
+    def applicable(self,state,tic):
+        """
+        """
+        return True
+
+    def goal_reached(self,state, tic):
+        """
+        """
+        print(state.g_state)
+        print(state)
+
+

@@ -22,6 +22,9 @@ endif()
 find_package(flexiv_rdk REQUIRED)
 find_package(pinocchio REQUIRED)
 
+find_package(yaml-cpp REQUIRED)
+
+
 
 
 # if user has not defined CMAKE_BUILD_TYPE, set it to Release
@@ -32,10 +35,11 @@ endif()
 idlcxx_generate(TARGET helloworlddata FILES HelloWorldData.idl WARNINGS no-implicit-extensibility)
 idlcxx_generate(TARGET flexivdata FILES FlexivData.idl WARNINGS no-implicit-extensibility)
 
-add_executable(main main.cpp)
+add_executable(main main.cpp utils.cpp)
 
 target_compile_definitions(main PRIVATE PINOCCHIO_WITH_HPP_FCL PINOCCHIO_WITH_URDFDOM)
-target_link_libraries(main CycloneDDS-CXX::ddscxx flexivdata helloworlddata flexiv::flexiv_rdk pinocchio::pinocchio)
+
+target_link_libraries(main CycloneDDS-CXX::ddscxx flexivdata helloworlddata flexiv::flexiv_rdk pinocchio::pinocchio yaml-cpp)
 
 
 

@@ -29,14 +29,9 @@ import cv2
 
 
 class Flexiv_client:
-    def __init__(
-        self, dt=0.001, render=False, render_images=True, create_sim_server=False, server_config_file="",
-        xml_path=None, urdf=None, meshes_dir=None, joints=None, 
-        base_path="", has_gripper=False
+    def __init__(self,create_server_cmd: str = ""):
 
-    ):
-
-        self.dt = dt
+        self.create_server_cmd = create_server_cmd
         self.domain_participant = DomainParticipant()
 
         self.topic_cmd = Topic(self.domain_participant, "FlexivCmd", FlexivCmd)
@@ -57,38 +52,22 @@ class Flexiv_client:
 
         self.warning_step_msg_send = False
 
-        self.warning_no_joint_states = .1
-        self.warning_no_env_states = .1
-        self.warning_no_env_image = .2
+        self.warning_no_joint_states_dt = .1
+        self.warning_no_joint_states_send = False
 
-        self.create_sim_server = create_sim_server
+        self.warning_no_env_states_dt = .1
+        self.warning_no_env_states_send = False
+
+        self.warning_no_env_image_dt = .2
+        self.warning_no_env_image_send = .2
+
+        self.max_wait_time_first_msg = 20
         self.server_process = None
 
-        if self.create_sim_server:
-
-            cmd = ["python", base_path +  "FlexivPy/robot/sim/sim_robot_async.py"]
-            if render:
-                cmd += ["--render"]
-            if server_config_file:
-                cmd += ["--config", server_config_file]
-            if render_images:
-                cmd += ["--render_images"]
-            if xml_path:
-                cmd += ["--xml_path", xml_path]
-            if urdf:
-                cmd += ["--urdf", urdf]
-            if meshes_dir:
-                cmd += ["--meshes_dir", meshes_dir]
-            if joints:
-                cmd += ["--joints"] + joints
-
-            if has_gripper:
-                cmd += ["--has_gripper"]
-
-            print("starting the server")
-            print(cmd)
-            self.server_process = subprocess.Popen(cmd, env=os.environ.copy())
-
+        if create_server_cmd:
+            _cmd = create_server_cmd.split(" ")
+            print("Starting server with command: ", _cmd)
+            self.server_process = subprocess.Popen(_cmd, env=os.environ.copy())
             time.sleep(0.01)
 
         # create a smiluation in another process
@@ -101,13 +80,13 @@ class Flexiv_client:
         self.time_last_env_state = tic
         self.time_last_img = tic
 
-
-
-
-        print("waiting for robot to be ready...")
-        while not self.is_ready():
-            time.sleep(0.05)
-        print("robot is ready!")
+        tic = time.time()
+        print("waiting to receive the first message from the robot...")
+        while True:
+            if self.is_ready():
+                break
+            if time.time() - tic > self.max_wait_time_first_msg:
+                raise Exception("Robot is not ready! -- Start the server first!")
 
     def is_ready(self):
         return self.get_robot_state() is not None
@@ -126,8 +105,7 @@ class Flexiv_client:
 
     def close(self):
         """ """
-        print("closing the robot!")
-        if self.create_sim_server:
+        if self.server_process is not None:
             print("closing the server")
             self.server_process.terminate()  # Terminate the process
             self.server_process.wait()  # Wait for the process to fully close
@@ -140,14 +118,13 @@ class Flexiv_client:
             frame = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
             self.last_img = frame
             self.time_last_img = tic
+            self.warning_no_env_image_send = False
         else:
-            if tic - self.time_last_img > self.warning_no_env_image:
-                pass
-                # print(f"warning: client did not recieve env image in  last {self.warning_no_joint_states} [s]")
+            if tic - self.time_last_img > self.warning_no_env_image_dt and not self.warning_no_env_image_send:
+                print(f"warning: client did not recieve env image in  last {self.warning_no_env_image_dt} [s]")
+                self.warning_no_env_image_send = True
         return self.last_img
 
-
-        
 
     def get_env_state(self):
         """
@@ -157,10 +134,11 @@ class Flexiv_client:
         if msg:
             self.last_env_state = dict(zip(msg.names, msg.poses))
             self.time_last_env_state = tic
+            self.warning_no_joint_states_send = False
         else:
-            if tic - self.time_last_env_state > self.warning_no_env_states:
-                pass
-                # print(f"warning: client did not recieve env states in  last {self.warning_no_joint_states} [s]")
+            if tic - self.time_last_env_state > self.warning_no_env_states_dt and not self.warning_no_joint_states_send:
+                print(f"warning: client did not recieve env states in  last {self.warning_no_joint_states_dt} [s]")
+                self.warning_no_env_states_send = True
         return self.last_env_state
 
 
@@ -171,10 +149,12 @@ class Flexiv_client:
         if msg:
             self.last_state = msg
             self.time_last_state = time.time()
+            self.warning_no_joint_states_send = False
             return self.last_state
 
         else:
             tic = time.time()
-            if tic - self.time_last_state > self.warning_no_joint_states:
-                print(f"warning: client did not recieve joint states in  last {self.warning_no_joint_states} [s]")
+            if tic - self.time_last_state > self.warning_no_joint_states_dt and not self.warning_no_joint_states_send :
+                print(f"warning: client did not recieve joint states in  last {self.warning_no_joint_states_dt} [s]")
+                self.warning_no_joint_states_send = True
             return self.last_state
