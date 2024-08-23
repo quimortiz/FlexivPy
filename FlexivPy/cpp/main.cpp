@@ -400,7 +400,8 @@ struct RobotController {
       throw_pretty("File not found");
     }
     try {
-      YAML::Node config = YAML::LoadFile("config.yaml");
+      YAML::Node config = YAML::LoadFile(filename);
+
       // lets parse the yaml file!
     } catch (const YAML::BadFile &e) {
       std::cerr << "Error loading the YAML file: " << e.what() << std::endl;
@@ -454,7 +455,6 @@ private:
   double gripper_width_close = 0.00;
   double delta_width = .001;
 
-  bool gripper_moving = false;
   bool gripper_openning = false;
   bool gripper_closing = false;
 

@@ -1,0 +1,45 @@
+#
+# CAUTION!!
+# Changing parameters in this YAML file is dangerous!
+# Before making any changes, first read the C++ code to understand what you are doing.
+#
+# The C++ bridge implements several security checks to make
+# operation from Python very secure.
+# Removing these checks or changing the bounds can result in the robot damaging itself or the surroundings.
+#
+#
+
+
+
+
+# gripper
+gripper_max_force: 20
+gripper_velocity: 0.1
+gripper_width_open: 0.09
+gripper_min_closing_force: 1
+gripper_width_close: 0.00
+delta_width: 001
+
+
+
+# q bounds
+q_min: [-1.57,    -2.4,     -2.79257, -2.70527, -2.96707, -1.39627, -2.96707]
+q_max: [ 1.57, .75, 2.79257, 2.70527, 2.96707, 4.53787, 2.96707 ]
+
+# in joint space
+max_norm_vel:  6
+max_norm_acc:  2
+max_distance:  .3 # max joint distance between current and target when using Kp
+
+tau_min:
+tau_max:
+
+kp_waiting :
+kd_waiting:
+
+# kImpedanceKp = {3000.0, 3000.0, 800.0, 800.0,
+#                                           200.0,  200.0,  200.0};
+#
+# const std::vector<double> kImpedanceKd = {80.0, 80.0, 40.0, 40.0,
+#                                           8.0,  8.0,  8.0};
+
