@@ -306,11 +306,11 @@ struct RobotController {
 
     if (t_cmd.g_cmd() == std::string("open")) {
       if (is_gripper_open()) {
-        gripper_openning = false;
+        gripper_opening = false;
         spdlog::info("gripper is already open");
         return;
       } else {
-        gripper_openning = true;
+        gripper_opening = true;
         gripper.Move(gripper_width_open, gripper_velocity, gripper_max_force);
         tic_last_gripper_cmd = std::chrono::system_clock::now();
       }
@@ -333,7 +333,7 @@ struct RobotController {
     }
 
     else if (t_cmd.g_cmd() == std::string("stop")) {
-      gripper_openning = false;
+      gripper_opening = false;
       gripper_closing = false;
       gripper.Stop();
     }
@@ -537,7 +537,7 @@ private:
 
   std::chrono::time_point<std::chrono::system_clock> last_gripper_time;
 
-  bool gripper_openning = false;
+  bool gripper_opening = false;
   bool gripper_closing = false;
 
   SyncData<FlexivMsg::FlexivCmd> cmd_msg;
@@ -768,7 +768,7 @@ private:
       // holding, opening, closing, open, closed
       if (gripper_closing) {
         state_out.g_state() = "closing";
-      } else if (gripper_openning) {
+      } else if (gripper_opening) {
         state_out.g_state() = "opening";
       } else if (is_gripper_closed()) {
         state_out.g_state() = "closed";
@@ -812,7 +812,6 @@ private:
 };
 
 // TODO: check if robot is operating!!!
-#include "cxxopts.hpp"
 int main(int argc, char *argv[]) {
 
   // Initialize variables with default values
@@ -827,6 +826,7 @@ int main(int argc, char *argv[]) {
   double max_time_s = std::numeric_limits<double>::infinity();
   std::string robot_config_file = "";
   std::string base_path = "";
+  bool ignore_cmd_moving_gripper = false;
 
   // Create an ArgumentParser object with program description
   argparse::ArgumentParser program(
@@ -898,6 +898,12 @@ int main(int argc, char *argv[]) {
       .help("Base path")
       .default_value(base_path)
       .store_into(base_path);
+
+  program.add_argument("-icmg", "--ignore_cmd_moving_gripper")
+      .help("ignore robot command if moving gripper")
+      .default_value(ignore_cmd_moving_gripper)
+      .implicit_value(true)
+      .store_into(ignore_cmd_moving_gripper);
 
   try {
     // Parse the command-line arguments
@@ -997,7 +1003,6 @@ int main(int argc, char *argv[]) {
   };
 
   bool receiving_gripper_cmds = false;
-  bool overwrite_cmd_if_moving_gripper = true;
   while (elapsed_s() < max_time_s && !g_stop_sched && robot->ok()) {
 
     auto tic_loop = std::chrono::high_resolution_clock::now();
@@ -1041,7 +1046,7 @@ int main(int argc, char *argv[]) {
         }
         robot->send_gripper_cmd(cmd_msg);
 
-        if (overwrite_cmd_if_moving_gripper) {
+        if (ignore_cmd_moving_gripper) {
           robot->modify_gripper_cmd(cmd_msg, gripper_waiting_q);
         }
       } else {

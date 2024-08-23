@@ -26,10 +26,11 @@ import time
 from FlexivPy.robot.dds.flexiv_messages import FlexivCmd, FlexivState, EnvState, EnvImage
 from FlexivPy.robot.dds.subscriber import get_last_msg
 import cv2
+from typing import List
 
 
 class Flexiv_client:
-    def __init__(self,create_server_cmd: str = ""):
+    def __init__(self,create_server_cmd: List[str] = []):
 
         self.create_server_cmd = create_server_cmd
         self.domain_participant = DomainParticipant()
@@ -64,10 +65,9 @@ class Flexiv_client:
         self.max_wait_time_first_msg = 20
         self.server_process = None
 
-        if create_server_cmd:
-            _cmd = create_server_cmd.split(" ")
-            print("Starting server with command: ", _cmd)
-            self.server_process = subprocess.Popen(_cmd, env=os.environ.copy())
+        if len(create_server_cmd):
+            print("Starting server with command: ", ' '.join(create_server_cmd))
+            self.server_process = subprocess.Popen(create_server_cmd, env=os.environ.copy())
             time.sleep(0.01)
 
         # create a smiluation in another process

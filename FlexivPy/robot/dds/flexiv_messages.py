@@ -35,7 +35,7 @@ class FlexivState(idl.IdlStruct):
     tau: array[types.float64, 7]
     ft_sensor: array[types.float64, 6] = field(default_factory=lambda: [.0, .0, .0, .0, .0, .0])
     timestamp: str = ""
-    g_state: str = "" # holding, openning, closing, open, closed
+    g_state: str = "" # holding, opening, closing, open, closed
     g_moving: bool = False
     g_force: types.float64 = -1
     g_width: types.float64 = -1

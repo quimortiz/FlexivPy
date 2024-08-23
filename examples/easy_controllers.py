@@ -1087,3 +1087,30 @@ class StopGripper():
         # TODO!!
 
 
+class WaitHere():
+    def __init__(self):
+        self.kp = 1. * np.array( [3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
+        self.kv =  3. * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+        
+
+    def setup(self,s):
+        self.q = np.copy(s.q)
+
+    def get_control(self,state,tic):
+        return  FlexivCmd(
+            q = self.q,
+            kv = self.kv,
+            kp = self.kp)
+
+
+    def applicable(self,state,tic):
+        """
+        """
+        return True
+
+    def goal_reached(self,state, tic):
+        """
+        """
+        return False
+
+
