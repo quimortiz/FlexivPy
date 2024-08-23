@@ -992,19 +992,30 @@ class Stay():
 
 
 class OpenGripper():
-    def __init__(self):
-        pass
+    def __init__(self, stay_here = False, max_error_stay_here = 1e-1):
+        self.stay_here = stay_here
+        self.kp = 1. * np.array( [3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
+        self.kv =  1. * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+        self.max_error_stay_here = max_error_stay_here
         
-
     def setup(self,s):
-        pass
+        self.q = np.array(s.q)
 
     def get_control(self,state,tic):
-        return  FlexivCmd(g_cmd="open")
+        if not self.stay_here:
+            return  FlexivCmd(g_cmd="open")
+        else:
+            return  FlexivCmd(g_cmd="open", 
+                              q = self.q,
+                              kp = self.kp,
+                              kv = self.kv)
 
     def applicable(self,state,tic):
         """
         """
+        if self.stay_here:
+            if np.linalg.norm(self.q - state.q) > self.max_error_stay_here:
+                return False
         return True
 
     def goal_reached(self,state, tic):
@@ -1016,19 +1027,32 @@ class OpenGripper():
             return False
 
 class CloseGripper():
-    def __init__(self):
-        pass
+    def __init__(self, stay_here = False, max_error_stay_here = 1e-1):
+        self.stay_here = stay_here
+        self.kp = 1. * np.array( [3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
+        self.kv =  1. * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+        self.max_error_stay_here = max_error_stay_here
         
 
     def setup(self,s):
-        pass
+        self.q = np.array(s.q)
 
     def get_control(self,state,tic):
-        return  FlexivCmd(g_cmd="close")
+        if not self.stay_here:
+            return  FlexivCmd(g_cmd="close")
+        else:
+            return  FlexivCmd(
+                q = self.q, 
+                g_cmd="close", 
+                kp = self.kp,
+                kv = self.kv)
 
     def applicable(self,state,tic):
         """
         """
+        if self.stay_here:
+            if np.linalg.norm(self.q - state.q) > self.max_error_stay_here:
+                return False
         return True
 
     def goal_reached(self,state, tic):
@@ -1049,6 +1073,7 @@ class StopGripper():
         pass
 
     def get_control(self,state,tic):
+        # TODO: check that this is running in the robot.
         return  FlexivCmd(g_cmd="stop")
 
     def applicable(self,state,tic):
@@ -1059,7 +1084,6 @@ class StopGripper():
     def goal_reached(self,state, tic):
         """
         """
-        print(state.g_state)
-        print(state)
+        # TODO!!
 
 
