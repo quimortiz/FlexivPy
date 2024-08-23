@@ -733,8 +733,8 @@ struct RealRobot : Robot {
   virtual void send_cmd(const FlexivMsg::FlexivCmd &t_cmd) override {
 
     // rewrite this so that i have a small state machine!!
-    // Openning, Open, Closing, Close,
-    // Openning and Closing are moving.
+    // Opening, Open, Closing, Close,
+    // Opening and Closing are moving.
     //
     //
 
@@ -742,9 +742,9 @@ struct RealRobot : Robot {
 
     FlexivMsg::FlexivCmd cmd = t_cmd;
     if (gripper_available) {
-      if (gripper_openning && is_gripper_open()) {
-        spdlog::info("gripper was openning and now is open");
-        gripper_openning = false;
+      if (gripper_opening && is_gripper_open()) {
+        spdlog::info("gripper was opening and now is open");
+        gripper_opening = false;
         // TODO: should I call stop?
       }
 
@@ -754,7 +754,7 @@ struct RealRobot : Robot {
         // TODO: should I call stop?
       }
 
-      gripper_moving = gripper_openning || gripper_closing;
+      gripper_moving = gripper_opening || gripper_closing;
 
       if (is_gripper_closed() && t_cmd.g_cmd() == std::string("close")) {
         // do nothing
@@ -764,7 +764,7 @@ struct RealRobot : Robot {
                t_cmd.g_cmd() == std::string("open")) {
         gripper.Move(gripper_width_open, gripper_velocity, gripper_max_force);
         std::cout << "Opening gripper..." << std::endl;
-        gripper_openning = true;
+        gripper_opening = true;
         spdlog::info("updating _state_stop_for_gripper");
         q_stop_for_gripper =
             Eigen::VectorXd::Map(state_msg.get().q().data(), 7);
@@ -778,7 +778,7 @@ struct RealRobot : Robot {
             Eigen::VectorXd::Map(state_msg.get().q().data(), 7);
       }
 
-      if (gripper_openning || gripper_closing) {
+      if (gripper_opening || gripper_closing) {
         if (overwrite_user_cmd_when_gripper_moving) {
           std::cout << "gripper is moving, overriting cmd" << std::endl;
           compute_default_cmd(q_stop_for_gripper, _cmd);
@@ -831,7 +831,7 @@ private:
   double delta_width = .001;
 
   bool gripper_moving = false;
-  bool gripper_openning = false;
+  bool gripper_opening = false;
   bool gripper_closing = false;
 
   SyncData<FlexivMsg::FlexivCmd> cmd_msg;
@@ -1134,11 +1134,11 @@ private:
       state_out.g_moving() = gripper.moving();
       state_out.g_force() = gripper.states().force;
       state_out.g_width() = gripper.states().width;
-      // holding, openning, closing, open, closed
+      // holding, opening, closing, open, closed
       if (gripper_closing) {
         state_out.g_state() = "closing";
-      } else if (gripper_openning) {
-        state_out.g_state() = "openning";
+      } else if (gripper_opening) {
+        state_out.g_state() = "opening";
       } else if (is_gripper_closed()) {
         state_out.g_state() = "closed";
       } else if (is_gripper_open()) {
