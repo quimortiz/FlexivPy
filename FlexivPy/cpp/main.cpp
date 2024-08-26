@@ -196,7 +196,8 @@ struct RobotController {
         use_gripper(args.use_gripper), robot_mode(args.robot_mode),
         check_collisions(args.check_collisions),
         robot_config_file(args.config_file),
-        check_endeff_bounds(args.check_endeff_bounds) {
+        check_endeff_bounds(args.check_endeff_bounds),
+	base_path(args.base_path) {
 
     if (robot_config_file.size()) {
       parse_config_file(robot_config_file);
