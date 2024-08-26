@@ -205,8 +205,10 @@ struct RobotController {
 
     if (use_gripper) {
       urdf = base_path + "flexiv_rizon10s_kinematics_w_gripper_mass.urdf";
+      srdf = base_path + "r10s_with_capsules.srdf";
     } else {
       urdf = base_path + "flexiv_rizon10s_kinematics.urdf";
+      srdf = base_path + "r10s_with_capsules.srdf";
     }
 
     pinocchio::urdf::buildModel(urdf, model);

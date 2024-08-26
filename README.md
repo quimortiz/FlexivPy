@@ -1,7 +1,58 @@
 # FlexivPy
 
+# Instructions Machines in Motion
 
-# TODO: 
+1 - Turn on the robot, connect the ethernet cabel, put the safety switch up, slider should on position with two arrows up.
+
+2 - Check that we can talk to the robot.
+
+```
+ping 192.168.2.100
+```
+
+3 - Compile the robot server. 
+From the root of the FlexivPy repository:
+
+```
+cd FlexivPy/cpp
+mkdir && cd build
+cmake .. -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
+make 
+sudo robot_server --path ../../assets/
+```
+
+There are a lot of command line options! 
+If the robot is using the Flexiv gripper add `-g`. Check them all with:
+
+```
+sudo ./robot_server --help
+```
+
+
+Do not deactivate safety checks without reading the c++ code before and asking people from the lab.
+
+Temporary: add the flag ignore collisions! `-ic`
+
+
+4 - Run the hello world example from Python in another terminal.
+
+```
+PYTHONPATH=. python examples/hello_world.py --mode=real
+```
+
+Now you can run your code!
+
+Before running on the real robot, try out the synchronous mujoco simulation and the asynchronous mujoco simulation.
+
+Run for example:
+
+```
+PYTHONPATH=. python examples/hello_world.py --mode=sim
+PYTHONPATH=. python examples/hello_world.py --mode=sim_async
+```
+
+
+
 
 
 # Experiments:

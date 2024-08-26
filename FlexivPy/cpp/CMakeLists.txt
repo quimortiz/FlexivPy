@@ -35,11 +35,11 @@ endif()
 idlcxx_generate(TARGET helloworlddata FILES HelloWorldData.idl WARNINGS no-implicit-extensibility)
 idlcxx_generate(TARGET flexivdata FILES FlexivData.idl WARNINGS no-implicit-extensibility)
 
-add_executable(main main.cpp utils.cpp)
+add_executable(robot_server robot_server.cpp utils.cpp)
 
-target_compile_definitions(main PRIVATE PINOCCHIO_WITH_HPP_FCL PINOCCHIO_WITH_URDFDOM)
+target_compile_definitions(robot_server PRIVATE PINOCCHIO_WITH_HPP_FCL PINOCCHIO_WITH_URDFDOM)
 
-target_link_libraries(main CycloneDDS-CXX::ddscxx flexivdata helloworlddata flexiv::flexiv_rdk pinocchio::pinocchio yaml-cpp)
+target_link_libraries(robot_server CycloneDDS-CXX::ddscxx flexivdata helloworlddata flexiv::flexiv_rdk pinocchio::pinocchio yaml-cpp)
 
 
 

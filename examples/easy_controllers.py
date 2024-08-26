@@ -22,41 +22,53 @@ class ControllerStatus(Enum):
 
 def run_controller_sync( robot, controller,  dt , max_time  ):
     """
-
     """
     pass
 
-def run_controller( robot, controller,  dt , max_time  ):
+def run_controller( robot, controller,  dt , max_time , sync_sim = False, dt_sim = None  ):
     s = robot.get_robot_state()
     controller.setup(s)
     tic_start = time.time()
     print("start controller")
     exit_status = ControllerStatus.UNKNOWN
+    counter = 0
     while True:
         tic = time.time()
         s = robot.get_robot_state()
+
+        elapsed_time = tic - tic_start if not sync_sim else counter * dt
         
-        if not controller.applicable(s , tic - tic_start):
+        if not controller.applicable(s , elapsed_time):
            print("controller is not applicable")
            exit_status = ControllerStatus.NOT_APPLICABLE
            break
         
-        if controller.goal_reached(s, tic - tic_start):
+        if controller.goal_reached(s, elapsed_time ):
             exit_status = ControllerStatus.GOAL_REACHED
             print("goal reached")
             break
 
-        if time.time() - tic_start > max_time:
+        if elapsed_time > max_time:
             exit_status = ControllerStatus.MAX_TIME
             print("max time reached")
             break
         
-        cmd = controller.get_control(s, tic - tic_start)
-        # TODO: should I break if the controller returns None?
-        if cmd:
-            robot.set_cmd(cmd)
+        cmd = controller.get_control(s, elapsed_time )
+     
+        robot.set_cmd(cmd)
+        if sync_sim :
+            if dt_sim is None:
+                raise ValueError("error!")
+            else:
+                num_steps = int(dt // dt_sim)
+                print("num steps is ", num_steps)
+                for i in range(num_steps):
+                    robot.step()
 
-        time.sleep(max(0, dt - (time.time() - tic)))
+        
+        time.sleep(max(0, dt - (time.time() - tic))) 
+        # We also apply this in simulation because we don't want to go faster than realtime.
+        counter += 1
     return exit_status
 
 
@@ -798,11 +810,12 @@ class GoHomeDefault() :
 
 
 class GoJointConfiguration():
-    def __init__(self, qdes =None, max_v = None, motion_time = None , max_extra_time_rel = .2, error_running = 2 * 1e-2, error_goal = 5 * 1e-3, min_motion_time = 1.):
+    def __init__(self, qdes =None, max_v = None, motion_time = None , max_extra_time_rel = .2, error_running = 2 * 1e-2, error_goal = 5 * 1e-3, min_motion_time = 1.,
+    kp_scale = 1. , kv_scale = 1.):
         self.max_v = max_v
         self.motion = time
-        self.kp = 2. * np.array( [3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
-        self.kv =  2. * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+        self.kp = kp_scale * 2. * np.array( [3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
+        self.kv = kv_scale * 2. * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
         self.qdes = qdes
         self.max_extra_time_rel = max_extra_time_rel
         self.error_running = error_running
@@ -841,12 +854,13 @@ class GoJointConfiguration():
         p, pdot, _ =  evaluate_polynomial(self.coefficients, t_i)
         pdot /= self.motion_time
 
-        return  FlexivCmd( 
+        cmd = FlexivCmd( 
             q = p , 
             dq = pdot , 
             kp = self.kp, 
             kv = self.kv
         )
+        return cmd
 
 
     def applicable(self,state,tic):

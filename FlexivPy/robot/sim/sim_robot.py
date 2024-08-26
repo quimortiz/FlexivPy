@@ -250,4 +250,5 @@ class FlexivSim:
 
     def close(self):
         if self.render:
+            self.viewer.sync()
             self.viewer.close()
