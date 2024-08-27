@@ -28,9 +28,9 @@ robot_model = model_robot.FlexivModel(
     render=False,
     q0=config.get("q0", None),
     # urdf="/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.urdf"
-    urdf="/home/quim/code/FlexivPy/FlexivPy/assets/flexiv_rizon10s_kinematics.urdf"
+    urdf="/home/quim/code/FlexivPy/FlexivPy/assets/flexiv_rizon10s_kinematics.urdf",
 )
- 
+
 server_process = None
 if args.mode == "sim_async":
     robot = robot_client.Flexiv_client(
@@ -45,7 +45,7 @@ elif args.mode == "sim":
     )
 
 elif args.mode == "real":
-    robot = robot_client.Flexiv_client( render=False, create_sim_server=False)
+    robot = robot_client.Flexiv_client(render=False, create_sim_server=False)
 
 
 simulation_time_s = 200
@@ -66,14 +66,8 @@ print_state_every = 500
 
 # controller = easy_controllers.GravityComp(robot_model, config.get("q0", None))
 
-# robot_model.display(np.array(config.get("q0", None))) 
+# robot_model.display(np.array(config.get("q0", None)))
 # input("Press Enter to continue...")
-
-
-
-
-
-
 
 
 # controller = easy_controllers.Controller_joint_PD(robot_model)
@@ -85,14 +79,14 @@ print("waiting for robot to be ready")
 max_wait_time = 10
 
 tic_wait = time.time()
-robot_ready  = False
-while  time.time() - tic_wait < max_wait_time:
+robot_ready = False
+while time.time() - tic_wait < max_wait_time:
     robot_ready = robot.is_ready()
     if robot_ready:
         break
     time.sleep(0.1)
 
-if  not robot_ready:
+if not robot_ready:
     raise ValueError("robot is not ready")
 else:
     print("robot is ready!")
@@ -113,7 +107,7 @@ for frame in model.frames:
 
 q = s["q"]
 
-frame_id = model.getFrameId( "flange" )
+frame_id = model.getFrameId("flange")
 
 print("joint_id", frame_id)
 
@@ -129,18 +123,15 @@ except:
     pass
 
 
-
-
 try:
     tic_start = time.time()
 
-
     # if False:
     try:
-        Tdes = np.array([[-1.,0.,0.],[0.,1.,0.],[0.,0.,-1.]])
-        R = pin.rpy.rpyToMatrix(.0,.0,.0)
+        Tdes = np.array([[-1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]])
+        R = pin.rpy.rpyToMatrix(0.0, 0.0, 0.0)
         Tdes = Tdes @ R
-        pdes = p0 + np.array([.01,-0.1,0.])
+        pdes = p0 + np.array([0.01, -0.1, 0.0])
         oMdes = pin.SE3(Tdes, pdes)
     except:
         pass
@@ -150,7 +141,7 @@ try:
     # print('desired pos', p0)
     # controller = easy_controllers.ForceController(robot_model.robot, frame_id, desired_f = -3., desired_R = Tdes, desired_pos = p0)
 
-    controller = easy_controllers.GravityComp(robot_model,s,tic_start)
+    controller = easy_controllers.GravityComp(robot_model, s, tic_start)
 
     for i in range(1000 * simulation_time_s):
 
@@ -159,7 +150,7 @@ try:
         senv = robot.get_env_state()
         img = robot.get_env_image()
 
-        cmd = controller.get_control(s,  tic)
+        cmd = controller.get_control(s, tic)
         if cmd is not None:
             robot.set_cmd(cmd)
 
@@ -177,5 +168,3 @@ try:
 
 finally:
     robot.close()
-
-

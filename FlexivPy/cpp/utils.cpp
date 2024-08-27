@@ -134,5 +134,3 @@ Eigen::VectorXd create_vector_from_list(const std::initializer_list<double>& val
     }
     return vec;
 }
-
-

@@ -9,10 +9,10 @@
 
 
   <mujoco>
-    <compiler 
-    meshdir="meshes" 
+    <compiler
+    meshdir="meshes"
     strippath="false"
-    balanceinertia="true" 
+    balanceinertia="true"
     discardvisual="false"
     convexhull="true" />
   </mujoco>

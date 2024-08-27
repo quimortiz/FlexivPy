@@ -30,9 +30,8 @@ from FlexivPy.robot.dds.subscriber import SubscriberNode
 from datetime import datetime
 
 
-
 class ImagePublisher:
-    def __init__(self, dt = 0.05, camera_id = 0):
+    def __init__(self, dt=0.05, camera_id=0):
         self.domain_participant = DomainParticipant()
         self.topic_state_image = Topic(self.domain_participant, "EnvImage", EnvImage)
         self.publisher_image = Publisher(self.domain_participant)
@@ -41,31 +40,29 @@ class ImagePublisher:
         self.camera_id = camera_id
         self.cap = cv2.VideoCapture(self.camera_id)
 
-
     def run(self):
         tic_start = time.time()
         while True:
             tic = time.time()
             ret, frame = self.cap.read()
             if not ret:
-                print('failed to read frame')
+                print("failed to read frame")
 
             # Convert frame to a byte array
-            _, buffer = cv2.imencode('.jpg', frame)
+            _, buffer = cv2.imencode(".jpg", frame)
             image_bytes = buffer.tobytes()
 
             # Create an ImageData object and publish it
-            now = datetime.now() # TODO: avoid calling tic twice
+            now = datetime.now()  # TODO: avoid calling tic twice
             timestamp = now.strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]
-            image_data = EnvImage(data=image_bytes,
-                                  timestamp=timestamp)
-            print('writing image!')
+            image_data = EnvImage(data=image_bytes, timestamp=timestamp)
+            print("writing image!")
             self.writer_image.write(image_data)
 
             # Wait to maintain the frame rate
-            elapsed_time = time.time() - tic 
-            print('elapsed_time', elapsed_time)
-            print('self.dt', self.dt)
+            elapsed_time = time.time() - tic
+            print("elapsed_time", elapsed_time)
+            print("self.dt", self.dt)
             time.sleep(max(0, self.dt - elapsed_time))
 
     def close(self):

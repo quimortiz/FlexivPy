@@ -9,10 +9,10 @@
 
 
   <mujoco>
-    <compiler 
-    meshdir="meshes" 
+    <compiler
+    meshdir="meshes"
     strippath="false"
-    balanceinertia="true" 
+    balanceinertia="true"
     discardvisual="false"
     convexhull="true" />
   </mujoco>
@@ -405,7 +405,7 @@
   <joint name="table_j" type="fixed">
     <parent link="base_link"/>
     <child link="table"/>
- <origin rpy="0. 0 0." xyz="0 0 -0.11"/> 
+ <origin rpy="0. 0 0." xyz="0 0 -0.11"/>
   </joint>
 
 
@@ -433,7 +433,7 @@
   <joint name="wall_j" type="fixed">
     <parent link="base_link"/>
     <child link="wall"/>
- <origin rpy="0. 0 0." xyz="-.4 0 0"/> 
+ <origin rpy="0. 0 0." xyz="-.4 0 0"/>
   </joint>
 
 

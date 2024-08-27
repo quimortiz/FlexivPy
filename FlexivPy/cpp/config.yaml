@@ -8,7 +8,7 @@
 # Removing these checks or changing the bounds can result in the robot damaging itself or the surroundings.
 #
 #
-# See function 
+# See function
 # void parse_config_file(const std::string &filename)
 # in class RobotController
 

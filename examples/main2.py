@@ -10,8 +10,6 @@ import easy_controllers
 import pinocchio as pin
 
 
-
-
 # import pickle
 # with open('array.pkl', 'rb') as f:
 #     states = pickle.load(f)
@@ -21,7 +19,7 @@ import pinocchio as pin
 robot = robot_client.Flexiv_client()
 
 # controller = easy_controllers.GoJointConfigurationSlow (
-#                  qgoal = np.array([ 0.000, -0.698, 0.000, 1.371, -0.000, 0.698, -0.000 ]) , 
+#                  qgoal = np.array([ 0.000, -0.698, 0.000, 1.371, -0.000, 0.698, -0.000 ]) ,
 #                  error_goal = .01 ,
 #                  max_dx = 0.002)
 # easy_controllers.run_controller(robot, controller,  dt=.01 , max_time = 10)
@@ -29,14 +27,14 @@ robot = robot_client.Flexiv_client()
 # controller = easy_controllers.GoHomeDefault()
 
 # controller = easy_controllers.GoJointConfiguration(
-#         qdes = np.array([ 0.0, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000 ]) , 
-#         max_v = .5, 
+#         qdes = np.array([ 0.0, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000 ]) ,
+#         max_v = .5,
 #         max_extra_time_rel = .2)
 
 
 controller = easy_controllers.JointFloating()
 
-status = easy_controllers.run_controller(robot, controller,  dt=.005 , max_time = 120)
+status = easy_controllers.run_controller(robot, controller, dt=0.005, max_time=120)
 print("status", status)
 
 adfa
@@ -58,7 +56,6 @@ adfa
 # )
 
 
-
 states = []
 try:
     dt = 0.01
@@ -69,13 +66,13 @@ try:
     while True:
         tic = time.time()
         s = robot.get_robot_state()
-        print('current state', s )
+        print("current state", s)
         states.append(s)
-        
-        if not controller.applicable(s , tic - tic_start):
-           print("controller is not applicable")
-           break
-        
+
+        if not controller.applicable(s, tic - tic_start):
+            print("controller is not applicable")
+            break
+
         if controller.goal_reached(s, tic - tic_start):
             print("goal reached")
             break
@@ -83,7 +80,7 @@ try:
         if time.time() - tic_start > max_time:
             print("max time reached")
             break
-        
+
         cmd = controller.get_control(s, tic - tic_start)
         # TODO: should I break if the controller returns None?
         if cmd:
@@ -91,12 +88,12 @@ try:
 
         time.sleep(max(0, dt - (time.time() - tic)))
 except:
-    print('exception!')
-
+    print("exception!")
 
 
 import pickle
-with open('__array.pkl', 'wb') as f:
+
+with open("__array.pkl", "wb") as f:
     pickle.dump(states, f)
 
 # easy_controllers.run_controller(robot, controller,  dt=.002 , max_time = 120)

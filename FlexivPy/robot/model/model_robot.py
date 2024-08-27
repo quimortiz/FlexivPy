@@ -15,7 +15,6 @@ ASSETS_PATH = "FlexivPy/assets/"
 
 
 class FlexivModel:
-
     def __init__(self, render=False, urdf=None, meshes_dir=None, q0=None):
         """ """
         self.urdf = urdf

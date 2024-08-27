@@ -12,19 +12,26 @@ import argparse
 import pinocchio as pin
 import easy_controllers
 
-from FlexivPy.robot.dds.flexiv_messages import FlexivCmd, FlexivState, EnvState, EnvImage
+from FlexivPy.robot.dds.flexiv_messages import (
+    FlexivCmd,
+    FlexivState,
+    EnvState,
+    EnvImage,
+)
 
 from numpy.linalg import solve
 from easy_controllers import frame_error, frame_error_jac
 
-class KeyboardJointControl:
 
-    def __init__(self, pin_robot, approx_dt=0.01) :
+class KeyboardJointControl:
+    def __init__(self, pin_robot, approx_dt=0.01):
         self.robot = pin_robot
         self.approx_dt = approx_dt
 
         pygame.init()
-        self.screen = pygame.display.set_mode((100, 100))  # Small window just to capture events
+        self.screen = pygame.display.set_mode(
+            (100, 100)
+        )  # Small window just to capture events
 
         # Control parameters
         self.joint_speed = 0.05
@@ -89,8 +96,7 @@ class KeyboardJointControl:
 
         error = self.des_q - q
         print("Error: ", error)
-        velocity = 1. * (self.des_q - q)
-
+        velocity = 1.0 * (self.des_q - q)
 
         des_q_next = q + self.approx_dt * velocity
 
@@ -98,7 +104,7 @@ class KeyboardJointControl:
             q=des_q_next,
             dq=velocity,
             kp=1.0 * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0]),
-            kv=1.0 * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+            kv=1.0 * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0]),
         )
 
     def applicable(self, state, tic):

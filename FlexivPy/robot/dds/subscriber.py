@@ -20,10 +20,9 @@ import os
 from datetime import datetime
 from copy import deepcopy
 
-def get_last_msg(reader, topic_type):
-    """
 
-    """
+def get_last_msg(reader, topic_type):
+    """ """
     last_msg = reader.take()
 
     if last_msg:
@@ -44,16 +43,19 @@ def get_last_msg(reader, topic_type):
         return None
 
 
+class SubscriberNode:
+    def __init__(
+        self,
+        topic_names: List[str],
+        topic_types,
+        dt: float = 0.1,
+        max_time_s: float = float("inf"),
+        warning_dt: float = 0.1,
+        messages_to_keep: int = 1000,
+        repeat_last_msg_if_not_new=True,
+    ):
 
-
-
-
-class SubscriberNode():
-
-    def __init__(self, topic_names: List[str], topic_types,  dt: float = .1, max_time_s: float = float('inf'), warning_dt : float = .1, messages_to_keep: int =  1000,
-                  repeat_last_msg_if_not_new = True):
-
-        self.repeat_last_msg_if_not_new  = repeat_last_msg_if_not_new 
+        self.repeat_last_msg_if_not_new = repeat_last_msg_if_not_new
 
         if len(topic_names) != len(topic_types):
             raise ValueError("topic_names and topic_types must have the same length")
@@ -69,10 +71,9 @@ class SubscriberNode():
 
         self.subscribers = []
         self.readers = []
-        self.message_queue =  deque(maxlen=self.messages_to_keep) 
+        self.message_queue = deque(maxlen=self.messages_to_keep)
 
         self.message_queue.append([None for _ in range(len(self.topic_names))])
-
 
         for topic_name, topic_type in zip(self.topic_names, self.topic_types):
             topic = Topic(self.domain_participant, topic_name, topic_type)
@@ -81,22 +82,16 @@ class SubscriberNode():
             self.subscribers.append(subscriber)
             self.readers.append(reader)
 
-
-
     def do(self):
         """
         Here you can do something with the messages!
         """
         raise NotImplementedError("You need to implement this method in child class")
-        
-
 
     def run(self):
-        """
-
-        """
+        """ """
         time_start = time.time()
-        time_last_msgs  = [time.time() for _ in range(len(self.topic_names))]
+        time_last_msgs = [time.time() for _ in range(len(self.topic_names))]
         warning_msg_send = [False for _ in range(len(self.topic_names))]
         warning_slow_send = False
 
@@ -108,7 +103,9 @@ class SubscriberNode():
                 if tic_loop - time_last_msgs[i] > self.warning_dt:
                     if not warning_msg_send[i]:
                         warning_msg_send[i] = True
-                        print(f"No state received in {self.warning_dt} seconds for topic {self.topic_names[i]}")
+                        print(
+                            f"No state received in {self.warning_dt} seconds for topic {self.topic_names[i]}"
+                        )
 
                 msg = get_last_msg(self.readers[i], self.topic_types[i])
 
@@ -127,21 +124,16 @@ class SubscriberNode():
                         all_msgs.append(None)
             self.message_queue.append(all_msgs)
 
-
-
-
             toc_loop = time.time()
-
 
             self.do()
 
             if (toc_loop - tic_loop) > self.dt:
                 if not warning_slow_send:
                     warning_slow_send = True
-                    print('warning: loop time {toc_loop-tic_loop} is greater than dt')
+                    print("warning: loop time {toc_loop-tic_loop} is greater than dt")
 
             time.sleep(max(0, self.dt - (toc_loop - tic_loop)))
 
     def close(self):
-        """
-        """
+        """ """

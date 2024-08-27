@@ -49,7 +49,7 @@ target_compile_definitions(gravity_comp PRIVATE PINOCCHIO_WITH_HPP_FCL PINOCCHIO
 target_link_libraries(gravity_comp CycloneDDS-CXX::ddscxx flexivdata helloworlddata flexiv::flexiv_rdk pinocchio::pinocchio)
 
 
-# add flag PINOCCHIO_WITH_HPP_FCL  
+# add flag PINOCCHIO_WITH_HPP_FCL
 
 
 

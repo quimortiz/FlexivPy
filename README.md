@@ -10,18 +10,18 @@
 ping 192.168.2.100
 ```
 
-3 - Compile the robot server. 
+3 - Compile the robot server.
 From the root of the FlexivPy repository:
 
 ```
 cd FlexivPy/cpp
 mkdir && cd build
 cmake .. -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
-make 
+make
 sudo robot_server --path ../../assets/
 ```
 
-There are a lot of command line options! 
+There are a lot of command line options!
 If the robot is using the Flexiv gripper add `-g`. Check them all with:
 
 ```
@@ -66,7 +66,7 @@ X More security checks.
 - Reaching task using Croccodyll
 X Option to do grav. comp. with MUJOCO.
 X Rerun integration
-X Camera simulation 
+X Camera simulation
 X IK controller
 X Smooth Polynomials
 X Run controller by controller interface
@@ -102,7 +102,7 @@ We need Cyclone DDS with both C++ bindings and Python Bindings
 
 
 
-git clone https://github.com/eclipse-cyclonedds/cyclonedds-cxx                           (/home/quim/code/alex/env) 
+git clone https://github.com/eclipse-cyclonedds/cyclonedds-cxx                           (/home/quim/code/alex/env)
                                           cd cyclonedds-cxx && mkdir build && cd build
                                           cmake -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DCMAKE_PREFIX_PATH=$CONDA_PREFIX ..
                                           cmake --build .
@@ -121,7 +121,7 @@ cmake --build . --target install
 
 Install Flexiv Sdk
 
-Follow the instructions in: 
+Follow the instructions in:
 
 
 https://github.com/flexivrobotics/flexiv_rdk
@@ -140,11 +140,10 @@ cmake --build . --target install --config Release
 
 # Acknowledgement
 
-This repository is inspired by: 
+This repository is inspired by:
 
 https://github.com/Rooholla-KhorramBakht/go2Py
 
 https://github.com/Rooholla-KhorramBakht/FR3Py
 
 https://github.com/machines-in-motion/dynamic_graph_head
-
