@@ -197,7 +197,7 @@ struct RobotController {
         check_collisions(args.check_collisions),
         robot_config_file(args.config_file),
         check_endeff_bounds(args.check_endeff_bounds),
-	base_path(args.base_path) {
+        base_path(args.base_path) {
 
     if (robot_config_file.size()) {
       parse_config_file(robot_config_file);
@@ -402,16 +402,20 @@ struct RobotController {
         kImpedanceKd = config["kImpedanceKd"].as<std::vector<double>>();
       }
 
-      if (config["p_ub_endff"]) {
+      if (config["p_ub_endeff"]) {
         std::vector<double> p_ub_vec =
-            config["p_ub_endff"].as<std::vector<double>>();
-        p_ub_endff = Eigen::VectorXd::Map(p_ub_vec.data(), p_ub_vec.size());
+            config["p_ub_endeff"].as<std::vector<double>>();
+        p_ub_endeff = Eigen::VectorXd::Map(p_ub_vec.data(), p_ub_vec.size());
       }
 
-      if (config["p_lb_endff"]) {
+      if (config["p_lb_endeff"]) {
         std::vector<double> p_lb_vec =
-            config["p_lb_endff"].as<std::vector<double>>();
-        p_lb_endff = Eigen::VectorXd::Map(p_lb_vec.data(), p_lb_vec.size());
+            config["p_lb_endeff"].as<std::vector<double>>();
+        p_lb_endeff = Eigen::VectorXd::Map(p_lb_vec.data(), p_lb_vec.size());
+      }
+
+      if (config["min_col_time"]) {
+        gripper_velocity = config["min_col_time"].as<double>();
       }
 
       if (config["q_min"]) {
@@ -477,14 +481,16 @@ struct RobotController {
 
 private:
   // numerical values
+
   std::string base_path = "FlexivPy/FlexivPy/assets/";
 
   std::vector<double> kImpedanceKp = {3000.0, 3000.0, 800.0, 800.0,
                                       200.0,  200.0,  200.0};
   std::vector<double> kImpedanceKd = {80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0};
 
-  Eigen::VectorXd p_ub_endff = create_vector_from_list({.8, .8, .9});
-  Eigen::VectorXd p_lb_endff = create_vector_from_list({-.1, -.8, .03});
+  double min_col_time = .2;
+  Eigen::VectorXd p_ub_endeff = create_vector_from_list({.8, .8, .9});
+  Eigen::VectorXd p_lb_endeff = create_vector_from_list({-.1, -.8, .05});
 
   std::vector<double> q_min = {-1.57,    -2.4,     -2.79257, -2.70527,
                                -2.96707, -1.39627, -2.96707};
@@ -738,6 +744,7 @@ private:
     auto &ft_sensor = robot.states().ft_sensor_raw;
 
     Eigen::VectorXd _q = Eigen::VectorXd::Map(q.data(), q.size());
+    Eigen::VectorXd _dq = Eigen::VectorXd::Map(dq.data(), dq.size());
 
     state_out.state() = robot_state;
 
@@ -783,36 +790,67 @@ private:
         state_out.g_state() = "unknown";
       }
     }
-
+    // std::cout << "check collisions is " << check_collisions << std::endl;
+    // TODO: move this out from the callback!
     if (check_collisions) {
 
+      auto tic = std::chrono::high_resolution_clock::now();
       bool is_collision = pinocchio::computeCollisions(model, data, geom_model,
                                                        geom_data, _q, true);
 
-      if (is_collision) {
-        throw_pretty("The current state is very close to collision!");
-      }
+      auto toc = std::chrono::high_resolution_clock::now();
+      std::cout << "elapsed "
+                << std::chrono::duration_cast<std::chrono::microseconds>(
+                       std::chrono::high_resolution_clock::now() - tic)
+                           .count() /
+                       1000.
+                << " ms ";
+
+    if (is_collision) {
+      throw_pretty("The current state is very close to collision!");
     }
-    if (check_endeff_bounds) {
-
-      pinocchio::forwardKinematics(model, data, _q);
-      pinocchio::updateFramePlacement(model, data, frame_id_for_bound_check);
-      auto M = data.oMf[frame_id_for_bound_check];
-
-      auto p = M.translation();
-
-      if ((p.array() <= p_lb_endff.array()).any() ||
-          (p.array() >= p_ub_endff.array()).any()) {
-        std::cout << "p is " << p.transpose() << std::endl;
-        std::cout << "p_ub_endff is " << p_ub_endff.transpose() << std::endl;
-        std::cout << "p_lb_endff is " << p_lb_endff.transpose() << std::endl;
-        throw_pretty("the end effector is out of bouns");
-      }
-    }
-
-    return state_out;
   }
-};
+  if (check_endeff_bounds) {
+
+    pinocchio::forwardKinematics(model, data, _q, _dq);
+    pinocchio::updateFramePlacement(model, data, frame_id_for_bound_check);
+    auto M = data.oMf[frame_id_for_bound_check];
+
+    auto p = M.translation();
+
+    if ((p.array() <= p_lb_endeff.array()).any() ||
+        (p.array() >= p_ub_endeff.array()).any()) {
+      std::cout << "p is " << p.transpose() << std::endl;
+      std::cout << "p_ub_endeff is " << p_ub_endeff.transpose() << std::endl;
+      std::cout << "p_lb_endeff is " << p_lb_endeff.transpose() << std::endl;
+      throw_pretty("the end effector is out of bouns");
+    }
+    pinocchio::Motion v_ref = getFrameVelocity(
+        model, data, frame_id_for_bound_check, pinocchio::LOCAL_WORLD_ALIGNED);
+
+    // Get the linear velocity
+    Eigen::VectorXd linear_vel = v_ref.linear();
+    //
+    // Check time required to collide with upper bounds
+
+    double max_time_ub =
+        ((p_ub_endeff - p).array() / linear_vel.array()).maxCoeff();
+    double max_time_lb =
+        ((p_lb_endeff - p).array() / linear_vel.array()).maxCoeff();
+    double time_to_col = std::max(max_time_ub, max_time_lb);
+
+    if (time_to_col < min_col_time) {
+      std::cout << "time to col is very low" << std::endl;
+      std::cout << "v " << linear_vel.transpose() << std::endl;
+      std::cout << "margin " << p(2) - p_lb_endeff(2) << std::endl;
+      throw_pretty("vel and pos is close to collision");
+    }
+  }
+
+  return state_out;
+}
+}
+;
 
 // TODO: check if robot is operating!!!
 int main(int argc, char *argv[]) {
@@ -979,6 +1017,7 @@ int main(int argc, char *argv[]) {
   robot_args.use_gripper = use_gripper;
   robot_args.robot_mode = t_robot_mode;
   robot_args.check_collisions = !ignore_collisions;
+  // TODO check what is happenig
   robot_args.config_file = robot_config_file;
   robot_args.check_endeff_bounds = !ignore_endeffector_bounds;
   robot_args.base_path = base_path;

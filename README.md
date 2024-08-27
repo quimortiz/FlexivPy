@@ -31,7 +31,6 @@ sudo ./robot_server --help
 
 Do not deactivate safety checks without reading the c++ code before and asking people from the lab.
 
-Temporary: add the flag ignore collisions! `-ic`
 
 
 4 - Run the hello world example from Python in another terminal.

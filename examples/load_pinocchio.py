@@ -7,19 +7,18 @@ import pinocchio as pin
 
 # urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.urdf"
 
-urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/flexiv_rizon10s_kinematics_w_gripper_mass.urdf"
+urdf = "FlexivPy/assets/flexiv_rizon10s_kinematics.urdf"
 robot = FlexivModel(render=True, urdf=urdf)
 
 
-
-# q = np.array([0, -0.75, 0, 1.5, 0, 0.75, 0])
+q = np.array([0, -0.75, 0, 1.5, 0, 0.75, 0])
 
 
 # joint id = 1
 # max of .75
 # min of 2.5
 
-q = np.array([-0,  -2.5, 0, 1.5, 0, 0.75, 0])
+#q = np.array([-0,  -2.5, 0, 1.5, 0, 0.75, 0])
 
 
 robot.vizer.displayCollisions(True)
@@ -78,7 +77,7 @@ robot.robot.collision_model.addAllCollisionPairs()
 
 
 pin.removeCollisionPairs(robot.robot.model, robot.robot.collision_model,
-'/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.srdf')
+'FlexivPy/assets/r10s_with_capsules.srdf')
 
 
 print(

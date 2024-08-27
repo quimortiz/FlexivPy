@@ -18,7 +18,7 @@ import pinocchio as pin
 #
 # import pdb; pdb.set_trace()
 
-robot = robot_client.Flexiv_client( render=False, create_sim_server=False)
+robot = robot_client.Flexiv_client()
 
 # controller = easy_controllers.GoJointConfigurationSlow (
 #                  qgoal = np.array([ 0.000, -0.698, 0.000, 1.371, -0.000, 0.698, -0.000 ]) , 
