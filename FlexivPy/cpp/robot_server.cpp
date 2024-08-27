@@ -806,51 +806,51 @@ private:
                        1000.
                 << " ms ";
 
-    if (is_collision) {
-      throw_pretty("The current state is very close to collision!");
+      if (is_collision) {
+        throw_pretty("The current state is very close to collision!");
+      }
     }
+    if (check_endeff_bounds) {
+
+      pinocchio::forwardKinematics(model, data, _q, _dq);
+      pinocchio::updateFramePlacement(model, data, frame_id_for_bound_check);
+      auto M = data.oMf[frame_id_for_bound_check];
+
+      auto p = M.translation();
+
+      if ((p.array() <= p_lb_endeff.array()).any() ||
+          (p.array() >= p_ub_endeff.array()).any()) {
+        std::cout << "p is " << p.transpose() << std::endl;
+        std::cout << "p_ub_endeff is " << p_ub_endeff.transpose() << std::endl;
+        std::cout << "p_lb_endeff is " << p_lb_endeff.transpose() << std::endl;
+        throw_pretty("the end effector is out of bouns");
+      }
+      pinocchio::Motion v_ref =
+          getFrameVelocity(model, data, frame_id_for_bound_check,
+                           pinocchio::LOCAL_WORLD_ALIGNED);
+
+      // Get the linear velocity
+      Eigen::VectorXd linear_vel = v_ref.linear();
+      //
+      // Check time required to collide with upper bounds
+
+      double max_time_ub =
+          ((p_ub_endeff - p).array() / linear_vel.array()).maxCoeff();
+      double max_time_lb =
+          ((p_lb_endeff - p).array() / linear_vel.array()).maxCoeff();
+      double time_to_col = std::max(max_time_ub, max_time_lb);
+
+      if (time_to_col < min_col_time) {
+        std::cout << "time to col is very low" << std::endl;
+        std::cout << "v " << linear_vel.transpose() << std::endl;
+        std::cout << "margin " << p(2) - p_lb_endeff(2) << std::endl;
+        throw_pretty("vel and pos is close to collision");
+      }
+    }
+
+    return state_out;
   }
-  if (check_endeff_bounds) {
-
-    pinocchio::forwardKinematics(model, data, _q, _dq);
-    pinocchio::updateFramePlacement(model, data, frame_id_for_bound_check);
-    auto M = data.oMf[frame_id_for_bound_check];
-
-    auto p = M.translation();
-
-    if ((p.array() <= p_lb_endeff.array()).any() ||
-        (p.array() >= p_ub_endeff.array()).any()) {
-      std::cout << "p is " << p.transpose() << std::endl;
-      std::cout << "p_ub_endeff is " << p_ub_endeff.transpose() << std::endl;
-      std::cout << "p_lb_endeff is " << p_lb_endeff.transpose() << std::endl;
-      throw_pretty("the end effector is out of bouns");
-    }
-    pinocchio::Motion v_ref = getFrameVelocity(
-        model, data, frame_id_for_bound_check, pinocchio::LOCAL_WORLD_ALIGNED);
-
-    // Get the linear velocity
-    Eigen::VectorXd linear_vel = v_ref.linear();
-    //
-    // Check time required to collide with upper bounds
-
-    double max_time_ub =
-        ((p_ub_endeff - p).array() / linear_vel.array()).maxCoeff();
-    double max_time_lb =
-        ((p_lb_endeff - p).array() / linear_vel.array()).maxCoeff();
-    double time_to_col = std::max(max_time_ub, max_time_lb);
-
-    if (time_to_col < min_col_time) {
-      std::cout << "time to col is very low" << std::endl;
-      std::cout << "v " << linear_vel.transpose() << std::endl;
-      std::cout << "margin " << p(2) - p_lb_endeff(2) << std::endl;
-      throw_pretty("vel and pos is close to collision");
-    }
-  }
-
-  return state_out;
-}
-}
-;
+};
 
 // TODO: check if robot is operating!!!
 int main(int argc, char *argv[]) {
