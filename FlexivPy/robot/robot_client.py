@@ -93,6 +93,7 @@ class Flexiv_client:
         print("waiting to receive the first message from the robot...")
         while True:
             if self.is_ready():
+                print("Robot is ready!")
                 break
             if time.time() - tic > self.max_wait_time_first_msg:
                 raise Exception("Robot is not ready! -- Start the server first!")

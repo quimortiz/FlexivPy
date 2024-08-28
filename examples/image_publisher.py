@@ -56,13 +56,10 @@ class ImagePublisher:
             now = datetime.now()  # TODO: avoid calling tic twice
             timestamp = now.strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]
             image_data = EnvImage(data=image_bytes, timestamp=timestamp)
-            print("writing image!")
             self.writer_image.write(image_data)
 
             # Wait to maintain the frame rate
             elapsed_time = time.time() - tic
-            print("elapsed_time", elapsed_time)
-            print("self.dt", self.dt)
             time.sleep(max(0, self.dt - elapsed_time))
 
     def close(self):
