@@ -144,7 +144,6 @@ struct RobotController {
 
       std::copy(t_kImpedanceKp.begin(), t_kImpedanceKp.end(), cmd.kp().begin());
       std::copy(t_kImpedanceKd.begin(), t_kImpedanceKd.end(), cmd.kv().begin());
-
     } else {
 
       throw_pretty("Mode not implemented");
@@ -174,7 +173,6 @@ struct RobotController {
 
       std::copy(t_kImpedanceKp.begin(), t_kImpedanceKp.end(), cmd.kp().begin());
       std::copy(t_kImpedanceKd.begin(), t_kImpedanceKd.end(), cmd.kv().begin());
-
     } else {
 
       throw_pretty("Mode not implemented");
@@ -342,7 +340,6 @@ struct RobotController {
     }
 
     else if (t_cmd.g_cmd() == std::string("")) {
-
     } else {
       throw_pretty("unknown gripper command");
     }
@@ -408,6 +405,11 @@ struct RobotController {
         p_ub_endeff = Eigen::VectorXd::Map(p_ub_vec.data(), p_ub_vec.size());
       }
 
+      if (config["max_endeff_v"]) {
+
+        max_endeff_v = config["max_endeff_v"].as<double>();
+      }
+
       if (config["p_lb_endeff"]) {
         std::vector<double> p_lb_vec =
             config["p_lb_endeff"].as<std::vector<double>>();
@@ -415,7 +417,7 @@ struct RobotController {
       }
 
       if (config["min_col_time"]) {
-        gripper_velocity = config["min_col_time"].as<double>();
+        min_col_time = config["min_col_time"].as<double>();
       }
 
       if (config["q_min"]) {
@@ -484,13 +486,17 @@ private:
 
   std::string base_path = "FlexivPy/FlexivPy/assets/";
 
+  double max_endeff_v = 1.;
+
   std::vector<double> kImpedanceKp = {3000.0, 3000.0, 800.0, 800.0,
                                       200.0,  200.0,  200.0};
   std::vector<double> kImpedanceKd = {80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0};
 
   double min_col_time = .2;
-  Eigen::VectorXd p_ub_endeff = create_vector_from_list({.8, .8, .9});
-  Eigen::VectorXd p_lb_endeff = create_vector_from_list({-.1, -.8, .05});
+  Eigen::VectorXd p_ub_endeff = create_vector_from_list({.9, .8, .9});
+  Eigen::VectorXd p_lb_endeff = create_vector_from_list({-.1, -.8, .03});
+  // Eigen::VectorXd p_ub_endeff = create_vector_from_list({.5, .5, .9});
+  // Eigen::VectorXd p_lb_endeff = create_vector_from_list({-.0, -.5, .05});
 
   std::vector<double> q_min = {-1.57,    -2.4,     -2.79257, -2.70527,
                                -2.96707, -1.39627, -2.96707};
@@ -794,17 +800,9 @@ private:
     // TODO: move this out from the callback!
     if (check_collisions) {
 
-      auto tic = std::chrono::high_resolution_clock::now();
+      // auto tic = std::chrono::high_resolution_clock::now();
       bool is_collision = pinocchio::computeCollisions(model, data, geom_model,
                                                        geom_data, _q, true);
-
-      auto toc = std::chrono::high_resolution_clock::now();
-      /*std::cout << "elapsed "*/
-      /*          << std::chrono::duration_cast<std::chrono::microseconds>(*/
-      /*                 std::chrono::high_resolution_clock::now() - tic)*/
-      /*                     .count() /*/
-      /*                 1000.*/
-      /*          << " ms ";*/
 
       if (is_collision) {
         throw_pretty("The current state is very close to collision!");
@@ -831,19 +829,38 @@ private:
 
       // Get the linear velocity
       Eigen::VectorXd linear_vel = v_ref.linear();
+
+      if (linear_vel.norm() > max_endeff_v) {
+
+        std::cout << "max_v" << max_endeff_v << std::endl;
+        std::cout << "linear vel " << linear_vel.transpose() << std::endl;
+
+        throw_pretty("vel of gripper is too high");
+      }
+
       //
       // Check time required to collide with upper bounds
 
-      double max_time_ub =
-          ((p_ub_endeff - p).array() / linear_vel.array()).maxCoeff();
-      double max_time_lb =
-          ((p_lb_endeff - p).array() / linear_vel.array()).maxCoeff();
-      double time_to_col = std::max(max_time_ub, max_time_lb);
+      double min_t = 1e8;
 
-      if (time_to_col < min_col_time) {
+      for (size_t i = 0; i < 3; i++) {
+
+        double t = (p_ub_endeff(i) - p(i)) / linear_vel(i);
+        if (t > 0 && t < min_t)
+          min_t = t;
+
+        t = (p_lb_endeff(i) - p(i)) / linear_vel(i);
+        if (t > 0 && t < min_t)
+          min_t = t;
+      }
+
+      if (min_t < min_col_time) {
         std::cout << "time to col is very low" << std::endl;
         std::cout << "v " << linear_vel.transpose() << std::endl;
-        std::cout << "margin " << p(2) - p_lb_endeff(2) << std::endl;
+        std::cout << "p_lb_endeff" << p_lb_endeff.transpose() << std::endl;
+
+        std::cout << "p_ub_endeff" << p_ub_endeff.transpose() << std::endl;
+        std::cout << " p " << p.transpose() << std::endl;
         throw_pretty("vel and pos is close to collision");
       }
     }
@@ -955,7 +972,6 @@ int main(int argc, char *argv[]) {
       std::cout << program.help().str() << std::endl;
       exit(0);
     }
-
   } catch (const std::runtime_error &err) {
     std::cout << "Error parsing the command line arguments" << std::endl;
     std::cerr << err.what() << std::endl;

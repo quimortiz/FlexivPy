@@ -35,13 +35,8 @@ add_executable(robot_server robot_server.cpp utils.cpp)
 target_compile_definitions(robot_server PRIVATE PINOCCHIO_WITH_HPP_FCL
                                                 PINOCCHIO_WITH_URDFDOM)
 
-target_link_libraries(
-  robot_server
-  CycloneDDS-CXX::ddscxx
-  flexivdata
-  flexiv::flexiv_rdk
-  pinocchio::pinocchio
-  yaml-cpp)
+target_link_libraries(robot_server CycloneDDS-CXX::ddscxx flexivdata
+                      flexiv::flexiv_rdk pinocchio::pinocchio yaml-cpp)
 
 add_executable(gravity_comp gravity_comp.cpp)
 
