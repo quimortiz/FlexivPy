@@ -486,14 +486,14 @@ private:
 
   std::string base_path = "FlexivPy/FlexivPy/assets/";
 
-  double max_endeff_v = .5;
+  double max_endeff_v = 1.;
 
   std::vector<double> kImpedanceKp = {3000.0, 3000.0, 800.0, 800.0,
                                       200.0,  200.0,  200.0};
   std::vector<double> kImpedanceKd = {80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0};
 
   double min_col_time = .2;
-  Eigen::VectorXd p_ub_endeff = create_vector_from_list({.8, .8, .9});
+  Eigen::VectorXd p_ub_endeff = create_vector_from_list({.9, .8, .9});
   Eigen::VectorXd p_lb_endeff = create_vector_from_list({-.1, -.8, .03});
   // Eigen::VectorXd p_ub_endeff = create_vector_from_list({.5, .5, .9});
   // Eigen::VectorXd p_lb_endeff = create_vector_from_list({-.0, -.5, .05});
@@ -865,9 +865,9 @@ private:
       if (min_t < min_col_time) {
         std::cout << "time to col is very low" << std::endl;
         std::cout << "v " << linear_vel.transpose() << std::endl;
-        std::cout << p_lb_endeff.transpose() << std::endl;
+        std::cout << "p_lb_endeff" << p_lb_endeff.transpose() << std::endl;
 
-        std::cout << p_ub_endeff.transpose() << std::endl;
+        std::cout << "p_ub_endeff" << p_ub_endeff.transpose() << std::endl;
         std::cout << " p " << p.transpose() << std::endl;
         throw_pretty("vel and pos is close to collision");
       }
