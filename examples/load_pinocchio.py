@@ -5,7 +5,7 @@ import pinocchio as pin
 
 # urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.urdf"
 
-urdf = "FlexivPy/assets/flexiv_rizon10s_kinematics.urdf"
+urdf = "FlexivPy/assets/flexiv_rizon10s_kinematics_w_gripper_mass.urdf"
 robot = FlexivModel(render=True, urdf=urdf)
 
 

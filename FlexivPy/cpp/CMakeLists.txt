@@ -27,8 +27,6 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-idlcxx_generate(TARGET helloworlddata FILES HelloWorldData.idl WARNINGS
-                no-implicit-extensibility)
 idlcxx_generate(TARGET flexivdata FILES FlexivData.idl WARNINGS
                 no-implicit-extensibility)
 
@@ -41,7 +39,6 @@ target_link_libraries(
   robot_server
   CycloneDDS-CXX::ddscxx
   flexivdata
-  helloworlddata
   flexiv::flexiv_rdk
   pinocchio::pinocchio
   yaml-cpp)
@@ -51,7 +48,7 @@ add_executable(gravity_comp gravity_comp.cpp)
 target_compile_definitions(gravity_comp PRIVATE PINOCCHIO_WITH_HPP_FCL
                                                 PINOCCHIO_WITH_URDFDOM)
 target_link_libraries(gravity_comp CycloneDDS-CXX::ddscxx flexivdata
-                      helloworlddata flexiv::flexiv_rdk pinocchio::pinocchio)
+                      flexiv::flexiv_rdk pinocchio::pinocchio)
 
 # add flag PINOCCHIO_WITH_HPP_FCL
 

@@ -31,16 +31,17 @@ def run_controller_sync(robot, controller, dt, max_time):
     pass
 
 
-def run_controller(robot, controller, dt, max_time, sync_sim=False, dt_sim=None):
+def run_controller(robot, controller, dt, max_time, sync_sim=False, dt_sim=None, 
+                   callback = None):
     s = robot.get_robot_state()
     controller.setup(s)
     tic_start = time.time()
-    print("start controller")
     exit_status = ControllerStatus.UNKNOWN
     counter = 0
     while True:
         tic = time.time()
         s = robot.get_robot_state()
+
 
         elapsed_time = tic - tic_start if not sync_sim else counter * dt
 
@@ -62,6 +63,10 @@ def run_controller(robot, controller, dt, max_time, sync_sim=False, dt_sim=None)
         cmd = controller.get_control(s, elapsed_time)
 
         robot.set_cmd(cmd)
+
+        if callback is not None:
+            callback(robot, cmd, elapsed_time)
+
         if sync_sim:
             if dt_sim is None:
                 raise ValueError("error!")

@@ -799,12 +799,12 @@ private:
                                                        geom_data, _q, true);
 
       auto toc = std::chrono::high_resolution_clock::now();
-      std::cout << "elapsed "
-                << std::chrono::duration_cast<std::chrono::microseconds>(
-                       std::chrono::high_resolution_clock::now() - tic)
-                           .count() /
-                       1000.
-                << " ms ";
+      /*std::cout << "elapsed "*/
+      /*          << std::chrono::duration_cast<std::chrono::microseconds>(*/
+      /*                 std::chrono::high_resolution_clock::now() - tic)*/
+      /*                     .count() /*/
+      /*                 1000.*/
+      /*          << " ms ";*/
 
       if (is_collision) {
         throw_pretty("The current state is very close to collision!");

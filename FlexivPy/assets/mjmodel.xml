@@ -91,6 +91,10 @@
                   <geom name="shell-7" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.4 0.4 0.4 1" mesh="v_link7"/>
                   <geom name="ring-7" pos="0 0 -0.0025" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="v_ring7"/>
                   <geom name="hull-7" type="mesh" rgba="1 1 1 1" mesh="c_link7"/>
+
+                  <camera name="camera_link7" pos=".1 0 0" quat="0. 0.7 0.7 0" />
+                  <!--YXZ 0 180 90-->
+                  <!--https://www.andre-gaschler.com/rotationconverter/-->
                 </body>
               </body>
             </body>
@@ -100,7 +104,7 @@
     </body>
 
     <!--lets add a cube-->
-    <body name="cube_small" pos="0.5 0.0 0.05">
+    <body name="cube_small" pos="0.8 0.1 0.05">
       <freejoint name="cube_small_j"/>
       <geom type="box" mass="0.01" pos="0 0 0" rgba="1 .1 .1 1" size="0.05 0.05 0.05"/>
       <!-- <geom name="geo-marker" pos="0 0 0.05" size="0.1 0.1 0.0005" type="box" material="marker-mat"/> -->

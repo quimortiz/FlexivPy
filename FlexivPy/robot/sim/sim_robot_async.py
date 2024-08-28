@@ -249,6 +249,10 @@ if __name__ == "__main__":
         "--has_gripper", action="store_true", help="render the simulation"
     )
 
+
+    argp.add_argument("--camera_name", type=str, default="static_camera")
+
+
     args = argp.parse_args()
 
     # load the config file
@@ -276,6 +280,8 @@ if __name__ == "__main__":
         render_images=args.render_images,
         joints=args.joints,
         has_gripper=args.has_gripper,
+        camera_name=args.camera_name
+
     )
 
     sim = FlexivSim_dds_server(robot_sim, dt, max_time=100.0)

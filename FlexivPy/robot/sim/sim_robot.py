@@ -39,8 +39,10 @@ class FlexivSim:
         object_names=[],
         joints=None,
         has_gripper=False,
+        camera_name = "static_camera"
     ):
 
+        self.camera_name = camera_name
         self.has_gripper = has_gripper
         if joints is None:
             self.joints = [
@@ -114,8 +116,10 @@ class FlexivSim:
 
             self.CV2 = cv2
             # TODO: adpat this code to include more camera if desired!
+            
+
             self.camera_renderer = mujoco.Renderer(self.model, 480, 640)
-            self.camera_renderer.update_scene(self.data)
+            self.camera_renderer.update_scene(self.data, camera=self.camera_name)
             pixels = self.camera_renderer.render()
             self.last_camera_image = cv2.cvtColor(pixels, cv2.COLOR_RGB2BGR).copy()
         else:
@@ -184,7 +188,7 @@ class FlexivSim:
             self.camera_renderer
             and (self.step_counter % self.camera_render_ds_ratio) == 0
         ):
-            self.camera_renderer.update_scene(self.data, camera="static_camera")
+            self.camera_renderer.update_scene(self.data, camera=self.camera_name)
             pixels = self.camera_renderer.render()
             self.last_camera_image = self.CV2.cvtColor(
                 pixels, self.CV2.COLOR_RGB2BGR
