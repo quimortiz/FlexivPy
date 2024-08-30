@@ -41,6 +41,7 @@ RUN conda install -y -c conda-forge \
 RUN conda install -c menpo opencv \
     && conda clean -afy
 
+RUN pip install mujoco pyyaml matplotlib
 # CycloneDDS
 WORKDIR /root
 RUN git clone https://github.com/eclipse-cyclonedds/cyclonedds && \
@@ -49,7 +50,7 @@ RUN git clone https://github.com/eclipse-cyclonedds/cyclonedds && \
     cmake --build . --config RelWithDebInfo --target install 
 
 RUN echo "export CYCLONEDDS_HOME=$CONDA_PREFIX" >> ~/.bashrc
-RUN pip3 install cyclonedds
+RUN pip3 install git+https://github.com/eclipse-cyclonedds/cyclonedds-python
 
 
 # # CycloneDDS-cxx
@@ -72,8 +73,7 @@ RUN git clone https://github.com/flexivrobotics/flexiv_rdk && cd flexiv_rdk/thir
 COPY FlexivPy/cpp /root/flexivpy_bridge
 WORKDIR /root/flexivpy_bridge
 RUN mkdir build && cd build && cmake .. -DCMAKE_PREFIX_PATH=$CONDA_PREFIX 
-
-#&& make -j 4 && make install
+&& make -j 4 && make install
 
 
 # Env vars for the nvidia-container-runtime
