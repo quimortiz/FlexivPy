@@ -23,75 +23,87 @@ from datetime import datetime
 import subprocess
 import time
 
-from FlexivPy.robot.dds.flexiv_messages import FlexivCmd, FlexivState
+from FlexivPy.robot.dds.flexiv_messages import (
+    FlexivCmd,
+    FlexivState,
+    EnvState,
+    EnvImage,
+)
+from FlexivPy.robot.dds.subscriber import get_last_msg
+import cv2
+from typing import List
 
 
 class Flexiv_client:
-    def __init__(
-        self, dt=0.001, render=False, create_sim_server=False, server_config_file=""
-    ):
+    def __init__(self, create_server_cmd: List[str] = []):
 
-        self.dt = dt
+        self.create_server_cmd = create_server_cmd
         self.domain_participant = DomainParticipant()
-        self.topic_state = Topic(self.domain_participant, "FlexivState", FlexivState)
+
         self.topic_cmd = Topic(self.domain_participant, "FlexivCmd", FlexivCmd)
         self.publisher = Publisher(self.domain_participant)
-        self.subscriber = Subscriber(self.domain_participant)
         self.writer = DataWriter(self.publisher, self.topic_cmd)
+
+        self.topic_state = Topic(self.domain_participant, "FlexivState", FlexivState)
+        self.subscriber = Subscriber(self.domain_participant)
         self.reader = DataReader(self.subscriber, self.topic_state)
-        self.warning_step_msg_send = False
-        self.warning_no_joint_states = (
-            0.1  # complain if we do not receive joint states for this time
+
+        self.topic_env_state = Topic(self.domain_participant, "EnvState", EnvState)
+        self.subscriber_env = Subscriber(self.domain_participant)
+        self.reader_env = DataReader(self.subscriber_env, self.topic_env_state)
+
+        self.topic_env_image = Topic(self.domain_participant, "EnvImage", EnvImage)
+        self.subscriber_env_image = Subscriber(self.domain_participant)
+        self.reader_env_image = DataReader(
+            self.subscriber_env_image, self.topic_env_image
         )
 
-        self.create_sim_server = create_sim_server
+        self.warning_step_msg_send = False
+
+        self.warning_no_joint_states_dt = 0.1
+        self.warning_no_joint_states_send = False
+
+        self.warning_no_env_states_dt = 0.1
+        self.warning_no_env_states_send = False
+
+        self.warning_no_env_image_dt = 0.2
+        self.warning_no_env_image_send = 0.2
+
+        self.max_wait_time_first_msg = 20
         self.server_process = None
 
-        if self.create_sim_server:
-
-            cmd = ["python", "FlexivPy/robot/sim/sim_robot_async.py"]
-            if render:
-                cmd += ["--render"]
-            if server_config_file:
-                cmd += ["--config", server_config_file]
-            cmd += ["--render_images"]
-            self.server_process = subprocess.Popen(cmd, env=os.environ.copy())
-
+        if len(create_server_cmd):
+            print("Starting server with command: ", " ".join(create_server_cmd))
+            self.server_process = subprocess.Popen(
+                create_server_cmd, env=os.environ.copy()
+            )
             time.sleep(0.01)
 
         # create a smiluation in another process
         self.last_state = None
-        self.time_last_state = time.time()
+        self.last_env_state = None
+        self.last_img = None
 
-        print("waiting for robot to be ready...")
-        while not self.is_ready():
-            time.sleep(0.05)
-        print("robot is ready!")
+        tic = time.time()
+        self.time_last_state = tic
+        self.time_last_env_state = tic
+        self.time_last_img = tic
+
+        tic = time.time()
+        print("waiting to receive the first message from the robot...")
+        while True:
+            if self.is_ready():
+                print("Robot is ready!")
+                break
+            if time.time() - tic > self.max_wait_time_first_msg:
+                raise Exception("Robot is not ready! -- Start the server first!")
 
     def is_ready(self):
-        return self.getJointStates() is not None
+        return self.get_robot_state() is not None
 
     def set_cmd(self, cmd):
         """ """
-        # create the dds message
-        # Get the current time
-        now = datetime.now()
-
-        # Format the time as a string with up to milliseconds
-        timestamp_str = now.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-
-        # print("Timestamp with milliseconds:", timestamp_str)
-        msg_out = FlexivCmd(
-            tau_ff=cmd["tau_ff"],
-            q=cmd["q"],
-            dq=cmd["dq"],
-            kp=cmd["kp"],
-            kv=cmd["kv"],
-            timestamp=timestamp_str,
-            mode=cmd["mode"],
-        )
-
-        self.writer.write(msg_out)
+        self.writer.write(cmd)
 
     def step(self):
         """ """
@@ -103,31 +115,67 @@ class Flexiv_client:
 
     def close(self):
         """ """
-        print("closing the robot!")
-        if self.create_sim_server:
+        if self.server_process is not None:
             print("closing the server")
             self.server_process.terminate()  # Terminate the process
             self.server_process.wait()  # Wait for the process to fully close
 
-    def getJointStates(self):
-        """ """
-        last_msg = self.reader.take()  # last message is a list of 1 or empty
+    def get_env_image(self):
+        tic = time.time()
+        msg = get_last_msg(self.reader_env_image, EnvImage)
+        if msg:
+            np_array = np.frombuffer(bytes(msg.data), dtype=np.uint8)
+            frame = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
+            self.last_img = frame
+            self.time_last_img = tic
+            self.warning_no_env_image_send = False
+        else:
+            if (
+                tic - self.time_last_img > self.warning_no_env_image_dt
+                and not self.warning_no_env_image_send
+            ):
+                print(
+                    f"warning: client did not recieve env image in  last {self.warning_no_env_image_dt} [s]"
+                )
+                self.warning_no_env_image_send = True
+        return self.last_img
 
-        if last_msg:
-            while True:
-                a = self.reader.take()
-                if not a:
-                    break
-                else:
-                    last_msg = a
-            msg = last_msg[0]  # now this is the last message
-            if msg and type(msg) is FlexivState:
-                self.last_state = {"q": np.array(msg.q), "dq": np.array(msg.dq)}
-                self.time_last_state = time.time()
-                return self.last_state
+    def get_env_state(self):
+        """ """
+        tic = time.time()
+        msg = get_last_msg(self.reader_env, EnvState)
+        if msg:
+            self.last_env_state = dict(zip(msg.names, msg.poses))
+            self.time_last_env_state = tic
+            self.warning_no_joint_states_send = False
+        else:
+            if (
+                tic - self.time_last_env_state > self.warning_no_env_states_dt
+                and not self.warning_no_joint_states_send
+            ):
+                print(
+                    f"warning: client did not recieve env states in  last {self.warning_no_joint_states_dt} [s]"
+                )
+                self.warning_no_env_states_send = True
+        return self.last_env_state
+
+    def get_robot_state(self):
+        """ """
+        msg = get_last_msg(self.reader, FlexivState)
+        if msg:
+            self.last_state = msg
+            self.time_last_state = time.time()
+            self.warning_no_joint_states_send = False
+            return self.last_state
 
         else:
             tic = time.time()
-            if tic - self.time_last_state > self.warning_no_joint_states:
-                print(f"warning: client did not recieve joint states in  last {self.warning_no_joint_states} [s]")
+            if (
+                tic - self.time_last_state > self.warning_no_joint_states_dt
+                and not self.warning_no_joint_states_send
+            ):
+                print(
+                    f"warning: client did not recieve joint states in  last {self.warning_no_joint_states_dt} [s]"
+                )
+                self.warning_no_joint_states_send = True
             return self.last_state

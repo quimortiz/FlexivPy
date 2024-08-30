@@ -5,14 +5,39 @@ module FlexivMsg {
         double dq[7];
         double kp[7];
         double kv[7];
-        string timestamp;
         int32 mode;
+        string g_cmd;
+        double  g_width;
+        double g_force;
+        string timestamp;
+        string special_cmd;
+        boolean tau_ff_with_gravity;
     };
 
     struct FlexivState {
         double q[7];
         double dq[7];
         double tau[7];
+        double ft_sensor[6];
+        string timestamp;
+        string g_state;
+        boolean g_moving;
+        double g_force;
+        double g_width;
+        string state;
+    };
+
+    struct FlexivImage {
+        sequence<octet> data;
         string timestamp;
     };
+
+    typedef double Array7[7];
+
+    struct FlexivObjects {
+        sequence<string> names;
+        sequence<Array7> poses;
+    };
+
+
 };

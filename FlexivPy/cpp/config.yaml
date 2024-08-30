@@ -1,0 +1,18 @@
+#
+# CAUTION!!
+# Changing parameters in this YAML file is dangerous!
+# Before making any changes, first read the C++ code to understand what you are doing.
+#
+# The C++ bridge implements several security checks to make
+# operation from Python very secure.
+# Removing these checks or changing the bounds can result in the robot damaging itself or the surroundings.
+#
+#
+# See function
+# void parse_config_file(const std::string &filename)
+# in class RobotController
+
+
+# Examples:
+# kImpedanceKp:  [3000.0, 3000.0, 800.0, 800.0, 200.0,  200.0,  200.0]
+# gripper_max_force: 10

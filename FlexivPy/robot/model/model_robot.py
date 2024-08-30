@@ -15,7 +15,6 @@ ASSETS_PATH = "FlexivPy/assets/"
 
 
 class FlexivModel:
-
     def __init__(self, render=False, urdf=None, meshes_dir=None, q0=None):
         """ """
         self.urdf = urdf
@@ -37,7 +36,7 @@ class FlexivModel:
 
         self.robot = robot
 
-        if q0 is not None:
+        if q0 is None:
             self.q0 = np.array([0.0, -0.75, 0.0, 1.5, 0.0, 0.75, 0.0])
         else:
             self.q0 = q0

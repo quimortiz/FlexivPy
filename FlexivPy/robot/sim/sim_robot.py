@@ -9,11 +9,13 @@ from scipy.spatial.transform import Rotation
 import os
 import yaml
 import pinocchio as pin
+import FlexivPy.robot.dds.flexiv_messages as flexiv_messages
 
 ASSETS_PATH = "FlexivPy/assets/"
 
 
 import cv2
+
 
 def view_image(image):
     cv2.imshow(f"tmp sim robot", image)
@@ -34,8 +36,26 @@ class FlexivSim:
         kv_damping=0.01,
         pin_model=None,
         render_images=False,
-
+        object_names=[],
+        joints=None,
+        has_gripper=False,
+        camera_name = "static_camera"
     ):
+
+        self.camera_name = camera_name
+        self.has_gripper = has_gripper
+        if joints is None:
+            self.joints = [
+                "joint1",
+                "joint2",
+                "joint3",
+                "joint4",
+                "joint5",
+                "joint6",
+                "joint7",
+            ]
+        else:
+            self.joints = joints
 
         assert pin_model is not None
         self.CV2 = None
@@ -51,11 +71,12 @@ class FlexivSim:
         self.dt = dt
         _render_dt = 1.0 / 30.0
         self.render_ds_ratio = max(1, _render_dt // dt)
-        self.camera_render_dt = 1.0 / 10.
+        self.camera_render_dt = 1.0 / 10.0
         self.camera_render_ds_ratio = max(1, self.camera_render_dt // dt)
         print("camera_render_ds_ratio", self.camera_render_ds_ratio)
 
         self.kv_damping = kv_damping
+        self.object_names = object_names
 
         if render:
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
@@ -85,24 +106,62 @@ class FlexivSim:
 
         self.q0 = q0
         if self.q0 is not None:
-            print("q0 is", q0)
-            self.reset_state(q0, np.zeros(7))
+            self.reset_state_robot(q0, np.zeros(7))
             if self.render:
                 self.viewer.sync()
 
+        self.last_camera_image = None
         if render_images:
             import cv2
+
             self.CV2 = cv2
             # TODO: adpat this code to include more camera if desired!
+            
+
             self.camera_renderer = mujoco.Renderer(self.model, 480, 640)
-            self.camera_renderer.update_scene(self.data)
+            self.camera_renderer.update_scene(self.data, camera=self.camera_name)
             pixels = self.camera_renderer.render()
             self.last_camera_image = cv2.cvtColor(pixels, cv2.COLOR_RGB2BGR).copy()
         else:
             self.camera_renderer = None
 
-
         print("robot sim is ready!")
+
+    def get_robot_joints(self):
+        return np.array([self.data.joint(j).qpos[0] for j in self.joints])
+
+    def get_robot_vel(self):
+        return np.array([self.data.joint(j).qvel[0] for j in self.joints])
+
+    def get_gripper_state(self):
+        if self.data.ctrl[-1] == 255:
+            if (
+                self.data.joint("2f_85_left_driver_joint").qpos > 0.75
+                and self.data.joint("2f_85_right_driver_joint").qpos > 0.75
+                and self.data.joint("2f_85_left_driver_joint").qvel < 0.5
+                and self.data.joint("2f_85_right_driver_joint").qvel < 0.5
+            ):
+                return "closed"
+            elif (
+                self.data.joint("2f_85_left_driver_joint").qpos > 0.1
+                and self.data.joint("2f_85_right_driver_joint").qpos > 0.1
+                and self.data.joint("2f_85_left_driver_joint").qvel < 0.5
+                and self.data.joint("2f_85_right_driver_joint").qvel < 0.5
+            ):
+                return "holding"
+
+            else:
+                return "open"
+        else:
+            return "open"
+
+    def set_robot_joints(self, q):
+        for i, j in enumerate(self.joints):
+            self.data.joint(j).qpos[0] = q[i]
+
+    def set_robot_vel(self, dq):
+        for i, j in enumerate(self.joints):
+            self.data.joint(j).qvel[0] = dq[i]
 
     def read_config(self, file):
         with open(file, "r") as stream:
@@ -111,9 +170,9 @@ class FlexivSim:
             except yaml.YAMLError as exc:
                 print(exc)
 
-    def reset_state(self, q, dq):
-        self.data.qpos = q
-        self.data.qvel = dq
+    def reset_state_robot(self, q, dq):
+        self.set_robot_joints(q)
+        self.set_robot_vel(dq)
         mujoco.mj_forward(self.model, self.data)
 
     def step(self):
@@ -125,34 +184,42 @@ class FlexivSim:
         if self.render and (self.step_counter % self.render_ds_ratio) == 0:
             self.viewer.sync()
 
-        if self.camera_renderer and (self.step_counter % self.camera_render_ds_ratio ) == 0:
-            self.camera_renderer.update_scene(self.data, camera="static_camera")
+        if (
+            self.camera_renderer
+            and (self.step_counter % self.camera_render_ds_ratio) == 0
+        ):
+            self.camera_renderer.update_scene(self.data, camera=self.camera_name)
             pixels = self.camera_renderer.render()
-            self.last_camera_image =  self.CV2.cvtColor(pixels, self.CV2.COLOR_RGB2BGR).copy()
+            self.last_camera_image = self.CV2.cvtColor(
+                pixels, self.CV2.COLOR_RGB2BGR
+            ).copy()
             # # lets show the image
             # self.CV2.imshow("image in sim robot", self.last_camera_image)
             # input('heere is the rendered image')
             # view_image(self.last_camera_image)
             # time.sleep(0.0001)
 
-
-
-
     def set_u(self):
         cmd = self.cmd
         tau = (
-            cmd["tau_ff"]
-            + cmd["kp"] * (cmd["q"] - self.data.qpos)
-            + cmd["kv"] * (cmd["dq"] - self.data.qvel)
+            np.array(cmd.tau_ff)
+            + np.array(cmd.kp) * (np.array(cmd.q) - self.get_robot_joints())
+            + np.array(cmd.kv) * (np.array(cmd.dq) - self.get_robot_vel())
         )
 
-        if self.gravity_comp:
+        if not cmd.tau_ff_with_gravity:
             tau += pin.computeGeneralizedGravity(
-                self.pin_model.model, self.pin_model.data, self.data.qpos
+                self.pin_model.model, self.pin_model.data, self.get_robot_joints()
             )
 
         if self.kv_damping > 0:
-            tau -= self.kv_damping * self.data.qvel
+            tau -= self.kv_damping * self.get_robot_vel()
+
+        if self.has_gripper:
+            if cmd.g_cmd == "close":
+                tau = np.append(tau, 255)
+            else:
+                tau = np.append(tau, 0)
 
         self.data.ctrl = tau
 
@@ -162,15 +229,40 @@ class FlexivSim:
         """
         self.cmd = cmd
 
-    def getJointStates(self):
-        return {"q": self.data.qpos, "dq": self.data.qvel}
+    def get_robot_tau(self):
+        return self.data.ctrl[:7]
+
+    def get_robot_state(self):
+        return flexiv_messages.FlexivState(
+            q=self.get_robot_joints(),
+            dq=self.get_robot_vel(),
+            g_state=self.get_gripper_state(),
+            tau=self.get_robot_tau(),
+            g_moving=False,
+            g_force=-1,
+            g_width=-1,
+        )
+
+    def get_env_image(self):
+        return self.last_camera_image
+
+    def get_env_state(self):
+        #
+        D = {}
+        for obj in self.object_names:
+            # q = data.joint("cube_j").qpos
+            D[obj] = np.concatenate(
+                [self.data.get_body_xpos(obj), self.data.get_body_xquat(obj)]
+            )
+        return D
 
     def is_ready(self):
-        return self.getJointStates() is not None
+        return self.get_robot_state() is not None
 
     def getPose(self):
         return self.data.qpos[:3], self.data.qpos[3:7]
 
     def close(self):
         if self.render:
+            self.viewer.sync()
             self.viewer.close()

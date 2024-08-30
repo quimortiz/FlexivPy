@@ -19,9 +19,6 @@ import pinocchio as pin
 from pinocchio.robot_wrapper import RobotWrapper
 
 
-
-
-
 def scene_to_trimeshes(scene: trimesh.Scene) -> list[trimesh.Trimesh]:
     """
     Convert a trimesh.Scene to a list of trimesh.Trimesh.
@@ -37,7 +34,6 @@ def scene_to_trimeshes(scene: trimesh.Scene) -> list[trimesh.Trimesh]:
         elif isinstance(geometry, trimesh.Scene):
             trimeshes.extend(scene_to_trimeshes(geometry))
     return trimeshes
-
 
 
 def log_trimesh(entity_path: str, mesh: trimesh.Trimesh) -> None:
@@ -56,7 +52,9 @@ def log_trimesh(entity_path: str, mesh: trimesh.Trimesh) -> None:
 
         if isinstance(trimesh_material, trimesh.visual.material.PBRMaterial):
             if trimesh_material.baseColorTexture is not None:
-                albedo_texture = pil_image_to_albedo_texture(trimesh_material.baseColorTexture)
+                albedo_texture = pil_image_to_albedo_texture(
+                    trimesh_material.baseColorTexture
+                )
             elif trimesh_material.baseColorFactor is not None:
                 vertex_colors = trimesh_material.baseColorFactor
         elif isinstance(trimesh_material, trimesh.visual.material.SimpleMaterial):
@@ -79,29 +77,30 @@ def log_trimesh(entity_path: str, mesh: trimesh.Trimesh) -> None:
     )
 
 
-
 class Robot_logger_rerunio:
     """Class to log a URDF to Rerun."""
 
-    def __init__(self, 
-                 robot, entity_path_prefix: Optional[str]) -> None:
+    def __init__(self, robot, entity_path_prefix: Optional[str]) -> None:
         self.robot = robot
         self.entity_path_prefix = entity_path_prefix
 
     def log(self, q: Optional[np.ndarray] = None, log_meshes: bool = False) -> None:
-        """
-        """
+        """ """
 
         # if geometry_type == pin.GeometryType.VISUAL:
         geom_model = self.robot.visual_model
         geom_data = self.robot.visual_data
 
         if q is None:
-            pin.updateGeometryPlacements(self.robot.model, self.robot.data, geom_model, geom_data)
+            pin.updateGeometryPlacements(
+                self.robot.model, self.robot.data, geom_model, geom_data
+            )
 
         else:
             pin.forwardKinematics(self.robot.model, self.robot.data, q)
-            pin.updateGeometryPlacements(self.robot.model, self.robot.data, geom_model, geom_data)
+            pin.updateGeometryPlacements(
+                self.robot.model, self.robot.data, geom_model, geom_data
+            )
 
         for visual in geom_model.geometryObjects:
 
@@ -119,14 +118,13 @@ class Robot_logger_rerunio:
 
             # Update viewer configuration.
 
-
-
-
             visual_name = visual.name
 
             # self.viewer[visual_name].set_transform(T)
-            rr.log(visual_name, rr.Transform3D(translation=T.translation, mat3x3=T.rotation))
-
+            rr.log(
+                visual_name,
+                rr.Transform3D(translation=T.translation, mat3x3=T.rotation),
+            )
 
             # add the mesh
 
@@ -134,15 +132,17 @@ class Robot_logger_rerunio:
 
             if log_meshes:
 
-
-            # self.log_visual(visual_name) 
+                # self.log_visual(visual_name)
                 if type(visual.geometry) == hppfcl.Cylinder:
                     mesh_or_scene = trimesh.creation.cylinder(
                         radius=visual.geometry.radius,
-                        height= 2 * visual.geometry.halfLength # visual.geometry.length,
+                        height=2
+                        * visual.geometry.halfLength,  # visual.geometry.length,
                     )
                 elif type(visual.geometry) == hppfcl.Box:
-                    mesh_or_scene = trimesh.creation.box(extents=2. * visual.geometry.halfSide)
+                    mesh_or_scene = trimesh.creation.box(
+                        extents=2.0 * visual.geometry.halfSide
+                    )
                 elif type(visual.geometry) == hppfcl.Sphere:
                     mesh_or_scene = trimesh.creation.icosphere(
                         radius=visual.geometry.radius,
@@ -150,8 +150,8 @@ class Robot_logger_rerunio:
                 elif type(visual.geometry) == hppfcl.BVHModelOBBRSS:
                     mesh_or_scene = trimesh.load_mesh(visual.meshPath)
 
-                else: 
-                    raise ValueError('unsupported geometry type')
+                else:
+                    raise ValueError("unsupported geometry type")
 
                 if isinstance(mesh_or_scene, trimesh.Scene):
                     scene = mesh_or_scene
@@ -159,7 +159,6 @@ class Robot_logger_rerunio:
                         mesh.visual = trimesh.visual.ColorVisuals()
                         mesh.visual.vertex_colors = visual.meshColor
                         log_trimesh(visual_name + f"/v0{i}", mesh)
-
 
                 else:
                     mesh_or_scene.visual = trimesh.visual.ColorVisuals()
