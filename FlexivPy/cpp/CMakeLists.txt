@@ -62,3 +62,5 @@ target_link_libraries(gravity_comp CycloneDDS-CXX::ddscxx flexivdata
 # set_property(TARGET ddscxxHelloworldPublisher PROPERTY CXX_STANDARD
 # ${cyclonedds_cpp_std_to_use}) set_property(TARGET ddscxxHelloworldSubscriber
 # PROPERTY CXX_STANDARD ${cyclonedds_cpp_std_to_use})
+install(TARGETS gravity_comp RUNTIME DESTINATION /bin)
+install(TARGETS robot_server RUNTIME DESTINATION /bin)
