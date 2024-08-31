@@ -30,7 +30,6 @@ RUN apt-get update && apt-get install -y -qq --no-install-recommends \
     libeigen3-dev \
     python3-dev \
     libglm-dev \
-    cuda-nvcc-11-8 \
     wget \
     ninja-build \
     && rm -rf /var/lib/apt/lists/*
@@ -58,13 +57,14 @@ RUN conda install -y -c conda-forge \
 RUN conda install -c menpo opencv \
     && conda clean -afy
 
-RUN pip install mujoco pyyaml \
-                       matplotlib \
-                       rerun-sdk \
-                       opencv-python \
-                       opencv_contrib
+RUN pip install mujoco \
+                pyyaml \
+                matplotlib \
+                rerun-sdk \
+                opencv-python \
+                opencv-contrib-python
 
-# CycloneDDS
+# # CycloneDDS
 WORKDIR /root
 RUN git clone https://github.com/eclipse-cyclonedds/cyclonedds && \
     cd cyclonedds && mkdir build install && cd build && \ 
@@ -95,6 +95,9 @@ COPY FlexivPy/cpp /root/flexivpy_bridge
 WORKDIR /root/flexivpy_bridge
 RUN mkdir build && cd build && cmake .. -DCMAKE_PREFIX_PATH=$CONDA_PREFIX \
     && make -j 4 && make install
+
+RUN echo export "export PATH=$PATH:/root/flexivpy_bridge/build" >> ~/.bashrc
+RUN echo export "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib" >> ~/.bashrc
 
 # Env vars for the nvidia-container-runtime
 ENV NVIDIA_VISIBLE_DEVICES all
