@@ -104,7 +104,7 @@ struct RobotController {
         }
         _send_cmd_torque(_cmd);
       } else {
-        throw_pretty("Mode not implemented");
+        throw_pretty("Mode not implemented:" + std::to_string(robot.mode()));
       }
       auto _state = _get_state();
       state_msg.update(_state);
@@ -115,7 +115,7 @@ struct RobotController {
   }
 
   virtual void start() {
-    robot.SwitchMode(flexiv::rdk::Mode::RT_JOINT_TORQUE);
+    robot.SwitchMode(robot_mode);
     scheduler.AddTask([&] { this->callback(); }, "General Task", 1,
                       scheduler.max_priority());
     scheduler.Start();
