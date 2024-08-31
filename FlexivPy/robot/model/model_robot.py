@@ -2,12 +2,9 @@
 
 import os
 
-import pinocchio as pin
 from pinocchio.robot_wrapper import RobotWrapper
 from pinocchio.visualize import MeshcatVisualizer
-from sys import argv
 import os
-from os.path import dirname, join, abspath
 import numpy as np
 
 

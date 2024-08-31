@@ -512,8 +512,8 @@ private:
   double gripper_width_close = 0.01;
   double delta_width = .001;
 
-  std::vector<double> tau_min = {-100, -100, -50, -50, -30, -30, -30};
-  std::vector<double> tau_max = {100, 100, 50, 50, 30, 30, 30};
+  std::vector<double> tau_min = {-100, -100, -80, -80, -30, -30, -30};
+  std::vector<double> tau_max = {100, 100, 80, 80, 30, 30, 30};
   double max_norm_vel = 6;
   double max_norm_acc = 2;
   double max_distance = .3;
