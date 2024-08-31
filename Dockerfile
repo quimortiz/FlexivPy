@@ -6,16 +6,33 @@ ARG OS_TYPE=x86_64
 SHELL ["/bin/bash", "-c"]
 
 # uodate and install dependencies 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y -qq --no-install-recommends \
     libyaml-cpp-dev \
     libboost-all-dev\
+    cmake-qt-gui \
+    libglvnd-dev \
+    libgl1-mesa-dev \
+    libegl1-mesa-dev \
+    libgles2-mesa-dev \
+    libxext6 \
+    libx11-6 \
+    freeglut3-dev \
+    git \
+    python3-pip \
+    python3-tk \
+    curl \
+    vim \ 
+    libcgal-dev \
+    libcgal-demo \
+    python-is-python3 \
     build-essential \
     cmake \
-    git \
-    cmake-qt-gui \
-    python3 \
-    python3-pip \
+    libeigen3-dev \
+    python3-dev \
+    libglm-dev \
+    cuda-nvcc-11-8 \
     wget \
+    ninja-build \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Miniconda
@@ -41,7 +58,12 @@ RUN conda install -y -c conda-forge \
 RUN conda install -c menpo opencv \
     && conda clean -afy
 
-RUN pip install mujoco pyyaml matplotlib
+RUN pip install mujoco pyyaml \
+                       matplotlib \
+                       rerun-sdk \
+                       opencv-python \
+                       opencv_contrib
+
 # CycloneDDS
 WORKDIR /root
 RUN git clone https://github.com/eclipse-cyclonedds/cyclonedds && \
@@ -52,8 +74,7 @@ RUN git clone https://github.com/eclipse-cyclonedds/cyclonedds && \
 RUN echo "export CYCLONEDDS_HOME=$CONDA_PREFIX" >> ~/.bashrc
 RUN pip3 install git+https://github.com/eclipse-cyclonedds/cyclonedds-python
 
-
-# # CycloneDDS-cxx
+# CycloneDDS-cxx
 WORKDIR /root
 RUN git clone https://github.com/eclipse-cyclonedds/cyclonedds-cxx &&\
     cd cyclonedds-cxx && mkdir build install && cd build && \
@@ -61,7 +82,7 @@ RUN git clone https://github.com/eclipse-cyclonedds/cyclonedds-cxx &&\
         -DCMAKE_PREFIX_PATH=$CONDA_PREFIX .. && \
     cmake --build . --target install
     
-#Flexiv SDK
+# Flexiv SDK
 WORKDIR /root
 RUN git clone https://github.com/flexivrobotics/flexiv_rdk && cd flexiv_rdk/thirdparty && \ 
     bash build_and_install_dependencies.sh $CONDA_PREFIX && \ 
@@ -72,13 +93,11 @@ RUN git clone https://github.com/flexivrobotics/flexiv_rdk && cd flexiv_rdk/thir
 # Install the FlexivPy bridge
 COPY FlexivPy/cpp /root/flexivpy_bridge
 WORKDIR /root/flexivpy_bridge
-RUN mkdir build && cd build && cmake .. -DCMAKE_PREFIX_PATH=$CONDA_PREFIX 
-&& make -j 4 && make install
-
+RUN mkdir build && cd build && cmake .. -DCMAKE_PREFIX_PATH=$CONDA_PREFIX \
+    && make -j 4 && make install
 
 # Env vars for the nvidia-container-runtime
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES graphics,utility,compute
-
 
 ENTRYPOINT [ "/bin/bash", "-l", "-c" ]
