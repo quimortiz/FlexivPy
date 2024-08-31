@@ -8,6 +8,9 @@ from FlexivPy.robot.dds.flexiv_messages import (
     FlexivCmd,
 )
 
+import numpy as np
+import queue
+
 from examples.utils import *
 
 # TODO: small demo of goal reaching tasks, opening and closing the gripper!
@@ -362,7 +365,9 @@ class GoJointConfiguration:
         min_motion_time=1.0,
         kp_scale=1.0,
         kv_scale=1.0,
+        control_mode="torque",
     ):
+        self.control_mode = control_mode
         self.max_v = max_v
         self.motion = time
         self.kp = (
@@ -417,7 +422,10 @@ class GoJointConfiguration:
         p, pdot, _ = evaluate_polynomial(self.coefficients, t_i)
         pdot /= self.motion_time
 
-        cmd = FlexivCmd(q=p, dq=pdot, kp=self.kp, kv=self.kv)
+        if self.control_mode == "torque":
+            cmd = FlexivCmd(q=p, dq=pdot, kp=self.kp, kv=self.kv)
+        elif self.control_mode == "position":
+            cmd = FlexivCmd(q=p, dq=pdot, mode=1)
         return cmd
 
     def applicable(self, state, tic):
@@ -568,8 +576,41 @@ class InverseKinematicsController:
         print("error is", err)
         return np.linalg.norm(err) < self.goal_error
 
+class JointFloatingHistory:
+    # TODO: not working yet, maybe remove?
+    def __init__(self, history=100, kv_scale=2., kp_scale=0.2):
+        self.kv_scale = kv_scale
+        self.kv = kv_scale * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+        self.kp = kp_scale * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
+        self.history_size = history
+        self.q_history = []
 
+    def setup(self, s):
+        self.q_history.clear()
+        for _ in range(self.history_size):
+            self.q_history.append(np.array(s.q))
 
+    def get_control(self, state, tic):
+        if len(self.q_history) >= self.history_size:
+            self.q_history.pop(0)  # Remove the oldest item
+        self.q_history.append(np.array(state.q))
+
+        # Take the average of the buffer
+        self.average_q = np.mean(self.q_history, axis=0)
+        print('average q:', self.average_q)
+
+        return FlexivCmd(
+            q=self.average_q,
+            kp=self.kp,
+            kv=self.kv)
+
+    def applicable(self, state, tic):
+        """ """
+        return True
+
+    def goal_reached(self, state, tic):
+        """ """
+        return False
 
 class JointFloating:
     def __init__(self, kv_scale=1.):
