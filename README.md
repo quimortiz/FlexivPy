@@ -88,7 +88,7 @@ We need Cyclone DDS with Python Bindings
 git clone https://github.com/eclipse-cyclonedds/cyclonedds
 cd cyclonedds && mkdir build install && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX
-cmake --build . --config RelWithDebInfo --target install
+cmake --build . --config Release --target install
 cd ..
 export CYCLONEDDS_HOME=$CONDA_PREFIX
 pip3 install git+https://github.com/eclipse-cyclonedds/cyclonedds-python

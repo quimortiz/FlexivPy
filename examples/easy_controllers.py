@@ -426,6 +426,11 @@ class GoJointConfiguration:
             cmd = FlexivCmd(q=p, dq=pdot, kp=self.kp, kv=self.kv)
         elif self.control_mode == "position":
             cmd = FlexivCmd(q=p, dq=pdot, mode=1)
+        elif self.control_mode == "velocity":
+            raise NotImplementedError
+            # NOTE: this does not reach the goal and lags behind. 
+            # print("pdot is", pdot)
+            # cmd = FlexivCmd(dq=pdot, mode=1)
         return cmd
 
     def applicable(self, state, tic):
@@ -438,6 +443,8 @@ class GoJointConfiguration:
         q = np.array(state.q)
         t_i = min(tic / self.motion_time, 1.0)
         p, pq, _ = evaluate_polynomial(self.coefficients, t_i)
+        print("current position is", q)
+        print("current velocity is", state.dq)
         if np.linalg.norm(p - q) > self.error_running:
             print("distance to goal is too large", np.linalg.norm(p - q))
             return False
@@ -455,24 +462,36 @@ class GoJointConfiguration:
 
 
 class GoJointConfigurationSlow:
-    def __init__(self, qgoal, error_goal=0.01, max_dq=0.005):
+    def __init__(self, qgoal, error_goal=0.01, max_dq=0.005, max_v = .1,
+                 control_mode="torque"):
         self.qgoal = qgoal
         self.error_goal = error_goal
         self.max_dq = max_dq
         self.kp = 1.5 * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
         self.kv = 4.0 * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+        self.control_mode = control_mode
+        self.max_v = max_v
 
     def setup(self, s):
         pass
 
     def get_control(self, state, tic):
-        q = np.array(state.q)
-        if np.linalg.norm(q - self.qgoal) > self.error_goal:
-            qgoal = q + self.max_dq * (self.qgoal - q) / np.linalg.norm(q - self.qgoal)
-        else:
-            qgoal = self.qgoal
 
-        return FlexivCmd(q=qgoal, kp=self.kp, kv=self.kv)
+        if self.control_mode == "torque":
+            q = np.array(state.q)
+            if np.linalg.norm(q - self.qgoal) > self.error_goal:
+                qgoal = q + self.max_dq * (self.qgoal - q) / np.linalg.norm(q - self.qgoal)
+            else:
+                qgoal = self.qgoal
+
+            return FlexivCmd(q=qgoal, kp=self.kp, kv=self.kv)
+        elif self.control_mode == "position":
+            raise NotImplementedError
+        elif self.control_mode == "velocity":
+
+            v = self.max_v * (self.qgoal - state.q) / max(np.linalg.norm(self.qgoal - state.q), 1e-6)
+
+            return FlexivCmd(dq=v , mode=1)
 
     def applicable(self, state, tic):
         return True
@@ -481,6 +500,42 @@ class GoJointConfigurationSlow:
         q = np.array(state.q)
         error = np.linalg.norm(q - self.qgoal)
         return error < self.error_goal
+
+
+
+class GoJointConfigurationVelocity:
+    def __init__(self, qgoal, error_goal=0.01, max_v = .1,
+                 kd = 1., smooth_velocity = .9):
+        self.kd = kd
+        self.qgoal = qgoal
+        self.error_goal = error_goal
+        self.max_v = max_v
+        self.smooth_velocity = smooth_velocity
+
+    def setup(self, s):
+        pass
+
+    def get_control(self, state, tic):
+        """
+
+        """
+        v = self.kd * (self.qgoal - state.q) 
+        if np.linalg.norm(v) > self.max_v:
+            v /= np.linalg.norm(v)
+
+        if self.smooth_velocity > 1e-6:
+            v = self.smooth_velocity * np.array(state.dq) + (1 - self.smooth_velocity) * v
+
+        return FlexivCmd(dq=v , mode=3)
+
+    def applicable(self, state, tic):
+        return True
+
+    def goal_reached(self, state, tic):
+        q = np.array(state.q)
+        error = np.linalg.norm(q - self.qgoal)
+        error_v = np.linalg.norm(state.dq)
+        return error + error_v  < self.error_goal
 
 
 class GoEndEffectorPose:
