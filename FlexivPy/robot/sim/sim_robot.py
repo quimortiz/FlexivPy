@@ -1,11 +1,9 @@
 # create a simulation robot using mujoco
 
 
-import time
 import mujoco
 import mujoco.viewer
 import numpy as np
-from scipy.spatial.transform import Rotation
 import os
 import yaml
 import pinocchio as pin

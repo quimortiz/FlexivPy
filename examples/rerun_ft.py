@@ -1,12 +1,10 @@
 import os
 import numpy as np
 import rerun as rr
-import time
 from pinocchio.robot_wrapper import RobotWrapper
 import FlexivPy.robot.vis.rerunio as rerunio
 
 from FlexivPy.robot.dds.flexiv_messages import FlexivState, FlexivCmd
-import cv2
 from FlexivPy.robot.dds.subscriber import SubscriberNode
 
 

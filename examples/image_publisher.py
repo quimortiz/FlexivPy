@@ -1,11 +1,4 @@
 import time
-import mujoco
-import mujoco.viewer
-import numpy as np
-from scipy.spatial.transform import Rotation
-import os
-import yaml
-import pinocchio as pin
 from FlexivPy.robot.dds.flexiv_messages import EnvImage
 import argparse
 
@@ -16,16 +9,13 @@ import cv2
 
 from cyclonedds.domain import DomainParticipant
 from cyclonedds.topic import Topic
-from cyclonedds.sub import Subscriber, DataReader
 from cyclonedds.pub import Publisher, DataWriter
 import time
 
 from cyclonedds.domain import DomainParticipant
 from cyclonedds.topic import Topic
-from FlexivPy.robot.dds.flexiv_messages import FlexivState, FlexivCmd, EnvImage
+from FlexivPy.robot.dds.flexiv_messages import EnvImage
 
-import rerun as rr
-from FlexivPy.robot.dds.subscriber import SubscriberNode
 
 from datetime import datetime
 

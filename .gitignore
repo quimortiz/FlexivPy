@@ -1,0 +1,5 @@
+env2/
+env/
+*.pyc
+FlexivPy/cpp/build
+FlexivPy/deps

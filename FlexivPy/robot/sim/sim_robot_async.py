@@ -1,10 +1,5 @@
 import time
-import mujoco
-import pinocchio as pin
-import mujoco.viewer
 import numpy as np
-from scipy.spatial.transform import Rotation
-import os
 import yaml
 
 import FlexivPy.robot.sim.sim_robot as sim_robot
@@ -13,15 +8,7 @@ import numpy as np
 import time
 
 
-from enum import auto
-from typing import TYPE_CHECKING, Optional
-from dataclasses import dataclass
 
-import cyclonedds.idl as idl
-import cyclonedds.idl.annotations as annotate
-import cyclonedds.idl.types as types
-from cyclonedds.idl.types import int64, float32, array
-from cyclonedds.idl.types import int64, float32, sequence
 import argparse
 
 # root module import for resolving types
@@ -30,19 +17,14 @@ import argparse
 from datetime import datetime
 
 import time
-import random
 
-from cyclonedds.core import Qos, Policy
 from cyclonedds.domain import DomainParticipant
 from cyclonedds.pub import Publisher, DataWriter
 from cyclonedds.topic import Topic
-from cyclonedds.util import duration
 
-from cyclonedds.core import Listener, Qos, Policy
 from cyclonedds.domain import DomainParticipant
 from cyclonedds.topic import Topic
 from cyclonedds.sub import Subscriber, DataReader
-from cyclonedds.util import duration
 import time
 from FlexivPy.robot.dds.flexiv_messages import (
     FlexivCmd,
@@ -53,7 +35,6 @@ from FlexivPy.robot.dds.flexiv_messages import (
 
 import cv2
 
-from FlexivPy.robot.dds.subscriber import get_last_msg
 
 
 def view_image(image):
@@ -201,7 +182,7 @@ class FlexivSim_dds_server:
                         now = datetime.now()
                         timestamp = now.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
                         image_data = EnvImage(data=image_bytes, timestamp=timestamp)
-                        print("writing image!")
+                        # print("writing image!")
                         self.writer_image.write(image_data)
                         time_last_img = tic
 
