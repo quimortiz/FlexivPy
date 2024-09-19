@@ -1,5 +1,7 @@
 # FROM isaac_ros_dev-aarch64
-FROM ros:humble
+# FROM ros:humble
+FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
+
 ENV DEBIAN_FRONTEND=noninteractive
 ARG CONDA_VER=latest
 ARG OS_TYPE=x86_64
@@ -8,7 +10,7 @@ SHELL ["/bin/bash", "-c"]
 # uodate and install dependencies 
 RUN apt-get update && apt-get install -y -qq --no-install-recommends \
     libyaml-cpp-dev \
-    libboost-all-dev\
+    # libboost-all-dev\
     cmake-qt-gui \
     libglvnd-dev \
     libgl1-mesa-dev \
@@ -64,6 +66,9 @@ RUN pip install mujoco \
                 opencv-python \
                 opencv-contrib-python
 
+
+RUN conda install conda-forge::cxx-compiler 
+RUN conda install -c conda-forge cmake
 # # CycloneDDS
 WORKDIR /root
 RUN git clone https://github.com/eclipse-cyclonedds/cyclonedds && \

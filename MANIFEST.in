@@ -1,0 +1,8 @@
+include FlexivPy/assets/meshes/FlexivPycollision/*.stl
+include FlexivPy/assets/meshes/FlexivPyvisual/*.mtl
+include FlexivPy/assets/meshes/FlexivPyvisual/*.png
+include FlexivPy/assets/meshes/FlexivPyvisual/*.obj
+include FlexivPy/FlexivPy/config/*.yaml
+include FlexivPy/assets/*.urdf
+include FlexivPy/assets/*.xml
+include FlexivPy/assets/*.srdf
