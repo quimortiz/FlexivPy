@@ -98,8 +98,10 @@ RUN git clone https://github.com/flexivrobotics/flexiv_rdk && cd flexiv_rdk/thir
 # Install the FlexivPy bridge
 COPY FlexivPy/cpp /root/flexivpy_bridge
 WORKDIR /root/flexivpy_bridge
+# if the source directory on the host system contains a build directory, delete it in the container
+RUN ( [ -d "build" ] && rm -rf "build" ) || true 
 RUN mkdir build && cd build && cmake .. -DCMAKE_PREFIX_PATH=$CONDA_PREFIX \
-    && make -j 4 && make install
+    && make -j4 && make install
 
 RUN echo export "export PATH=$PATH:/root/flexivpy_bridge/build" >> ~/.bashrc
 RUN echo export "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib" >> ~/.bashrc

@@ -2,9 +2,10 @@
 {
     "name": "FlexivPy", 
     "dockerComposeFile": "docker-compose.yaml",
-    "workspaceFolder": "/home/",
+    "workspaceFolder": "/home/FlexivPy",
     "service": "flexivpy",
     "remoteUser": "root", 
+    "postCreateCommand": "cd /home/FlexivPy && pip install -e .",
     "customizations": {
       "vscode": {
         "extensions": [
