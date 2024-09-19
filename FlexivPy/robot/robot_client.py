@@ -1,23 +1,15 @@
 import time
-import mujoco
-import mujoco.viewer
 import numpy as np
-from scipy.spatial.transform import Rotation
 import os
 
-from cyclonedds.core import Listener, Qos, Policy
 from cyclonedds.domain import DomainParticipant
 from cyclonedds.topic import Topic
 from cyclonedds.sub import Subscriber, DataReader
-from cyclonedds.util import duration
 import time
 
-from cyclonedds.core import Qos, Policy
 from cyclonedds.domain import DomainParticipant
 from cyclonedds.pub import Publisher, DataWriter
 from cyclonedds.topic import Topic
-from cyclonedds.util import duration
-from datetime import datetime
 
 
 import subprocess

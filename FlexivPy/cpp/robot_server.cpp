@@ -69,6 +69,7 @@ std::atomic<bool> g_stop_sched = {false};
 struct RobotControllerArgs {
   std::string robot_serial_number;
   flexiv::rdk::Mode robot_mode;
+  int control_mode;
   bool use_gripper;
   bool check_collisions;
   std::string config_file;
@@ -86,9 +87,20 @@ struct RobotController {
 
       auto _cmd = cmd_msg.get();
 
+      // check that _cmd matches the control mode
+      //
+      //
+      //
+
+      if (_cmd.mode() != control_mode) {
+        std::cout << "control mode is " << control_mode << std::endl;
+        std::cout << "cmd mode is " << _cmd.mode() << std::endl;
+        throw_pretty("Control mode does not match robot mode");
+      }
+
       if (robot.mode() == flexiv::rdk::Mode::RT_JOINT_POSITION) {
 
-        if (_cmd.mode() != 1) {
+        if (_cmd.mode() != 1 && _cmd.mode() != 3) {
 
           throw_pretty(
               "we are in Joint Position mode, but the command is not of "
@@ -104,7 +116,7 @@ struct RobotController {
         }
         _send_cmd_torque(_cmd);
       } else {
-        throw_pretty("Mode not implemented");
+        throw_pretty("Mode not implemented:" + std::to_string(robot.mode()));
       }
       auto _state = _get_state();
       state_msg.update(_state);
@@ -115,7 +127,7 @@ struct RobotController {
   }
 
   virtual void start() {
-    robot.SwitchMode(flexiv::rdk::Mode::RT_JOINT_TORQUE);
+    robot.SwitchMode(robot_mode);
     scheduler.AddTask([&] { this->callback(); }, "General Task", 1,
                       scheduler.max_priority());
     scheduler.Start();
@@ -158,7 +170,10 @@ struct RobotController {
     std::copy(q.data(), q.data() + q.size(), cmd.q().begin());
 
     if (robot.mode() == flexiv::rdk::Mode::RT_JOINT_POSITION) {
-      cmd.mode() = 1;
+      if (control_mode == 1)
+        cmd.mode() = 1;
+      else if (control_mode == 3)
+        cmd.mode() = 3;
     } else if (robot.mode() == flexiv::rdk::Mode::RT_JOINT_TORQUE) {
       cmd.mode() = 2;
 
@@ -190,9 +205,9 @@ struct RobotController {
   }
   RobotController(const RobotControllerArgs &args)
       : robot_serial_number(args.robot_serial_number),
-        robot(args.robot_serial_number), gripper(robot),
-        use_gripper(args.use_gripper), robot_mode(args.robot_mode),
-        check_collisions(args.check_collisions),
+        robot(args.robot_serial_number), control_mode(args.control_mode),
+        gripper(robot), use_gripper(args.use_gripper),
+        robot_mode(args.robot_mode), check_collisions(args.check_collisions),
         robot_config_file(args.config_file),
         check_endeff_bounds(args.check_endeff_bounds),
         base_path(args.base_path) {
@@ -255,7 +270,8 @@ struct RobotController {
     }
     spdlog::info("Robot is now operational");
 
-    robot.SwitchMode(flexiv::rdk::Mode::RT_JOINT_TORQUE);
+    robot.SwitchMode(robot_mode);
+    /*flexiv::rdk::Mode::RT_JOINT_TORQUE);*/
 
     auto bounds = adjust_limits_interval(.02, q_min, q_max);
     q_min = bounds.first;
@@ -484,6 +500,7 @@ struct RobotController {
 private:
   // numerical values
 
+  int control_mode;
   std::string base_path = "FlexivPy/FlexivPy/assets/";
 
   double max_endeff_v = 1.;
@@ -512,8 +529,8 @@ private:
   double gripper_width_close = 0.01;
   double delta_width = .001;
 
-  std::vector<double> tau_min = {-100, -100, -50, -50, -30, -30, -30};
-  std::vector<double> tau_max = {100, 100, 50, 50, 30, 30, 30};
+  std::vector<double> tau_min = {-100, -100, -80, -80, -30, -30, -30};
+  std::vector<double> tau_max = {100, 100, 80, 80, 30, 30, 30};
   double max_norm_vel = 6;
   double max_norm_acc = 2;
   double max_distance = .3;
@@ -657,21 +674,46 @@ private:
 
   virtual void _send_cmd_position(const FlexivMsg::FlexivCmd &cmd) {
 
+    bool use_only_vel = control_mode == 3;
+    double dt = .001;
+
     std::vector<double> target_pos(7, 0);
     std::vector<double> target_vel(7, 0);
     std::vector<double> target_acc(7, 0);
-
-    if (cmd.q().size() == target_pos.size()) {
-      std::copy(cmd.q().begin(), cmd.q().end(), target_pos.begin());
-    } else {
-      throw_pretty("Vector size does not match array size!");
-    }
 
     if (cmd.dq().size() == target_vel.size()) {
       std::copy(cmd.dq().begin(), cmd.dq().end(), target_vel.begin());
     } else {
 
       throw_pretty("Vector size does not match array size!");
+    }
+
+    if (use_only_vel) {
+      // i compute desired position based on the desired velocity.
+
+      for (size_t i = 0; i < target_pos.size(); i++) {
+        target_pos[i] = robot.states().q[i] + target_vel[i] * dt;
+      }
+
+    } else {
+
+      if (cmd.q().size() == target_pos.size()) {
+        std::copy(cmd.q().begin(), cmd.q().end(), target_pos.begin());
+      } else {
+        throw_pretty("Vector size does not match array size!");
+      }
+    }
+    // Some security checks...
+    for (auto &i : target_vel) {
+      if (std::isnan(i) or std::isinf(i)) {
+        print_vector(target_vel);
+        throw_pretty("Nan in target velocity");
+      }
+    }
+
+    if (euclidean_norm(target_vel) > max_norm_vel) {
+      print_vector(target_vel);
+      throw_pretty("Velocity norm is too high");
     }
 
     if (q_min.size() != target_pos.size() ||
@@ -691,25 +733,6 @@ private:
         print_vector(target_pos);
         throw std::runtime_error("Nan in target position");
       }
-    }
-
-    for (auto &i : target_vel) {
-      if (std::isnan(i) or std::isinf(i)) {
-        print_vector(target_vel);
-        throw_pretty("Nan in target velocity");
-      }
-    }
-
-    for (auto &i : target_acc) {
-      if (std::isnan(i) or std::isinf(i)) {
-        print_vector(target_acc);
-        throw_pretty("Nan in target acceleration");
-      }
-    }
-
-    if (euclidean_norm(target_vel) > max_norm_vel) {
-      print_vector(target_vel);
-      throw_pretty("Velocity norm is too high");
     }
 
     if (euclidean_norm(target_acc) > max_norm_acc) {
@@ -899,7 +922,7 @@ int main(int argc, char *argv[]) {
       .nargs(0);
 
   program.add_argument("-cm", "--control_mode")
-      .help("0: Error, 1: Kin, 2: Torque")
+      .help("0: Error, 1: Pos&Vel, 2: Torque&Pos&Vel 3:Vel")
       .default_value(control_mode)
       .store_into(control_mode); // Store directly into control_mode
 
@@ -1020,7 +1043,7 @@ int main(int argc, char *argv[]) {
 
   if (control_mode == 0) {
     throw_pretty("Error mode not implemented");
-  } else if (control_mode == 1) {
+  } else if (control_mode == 1 || control_mode == 3) {
     t_robot_mode = flexiv::rdk::Mode::RT_JOINT_POSITION;
   } else if (control_mode == 2) {
     t_robot_mode = flexiv::rdk::Mode::RT_JOINT_TORQUE;
@@ -1030,6 +1053,7 @@ int main(int argc, char *argv[]) {
 
   RobotControllerArgs robot_args;
   robot_args.robot_serial_number = serial_number;
+  robot_args.control_mode = control_mode;
   robot_args.use_gripper = use_gripper;
   robot_args.robot_mode = t_robot_mode;
   robot_args.check_collisions = !ignore_collisions;
@@ -1113,11 +1137,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (robot->get_robot_state() == "waiting") {
-      if (control_mode == 2) {
-        cmd_msg = robot->compute_default_cmd(waiting_q);
-      } else if (control_mode == 1) {
-        cmd_msg = robot->compute_default_cmd(waiting_q);
-      }
+      cmd_msg = robot->compute_default_cmd(waiting_q);
     }
 
     robot->send_cmd(cmd_msg);

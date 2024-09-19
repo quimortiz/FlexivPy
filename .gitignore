@@ -1,3 +1,8 @@
+env2/
+env/
+*.pyc
+FlexivPy/cpp/build
+FlexivPy/deps
 /home/rooholla/projects/FlexivPy/FlexivPy/cpp/build
 # Byte-compiled / optimized / DLL files
 __pycache__/

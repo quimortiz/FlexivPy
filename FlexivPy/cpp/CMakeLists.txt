@@ -40,11 +40,16 @@ target_link_libraries(robot_server CycloneDDS-CXX::ddscxx flexivdata
 
 add_executable(gravity_comp gravity_comp.cpp)
 
+
+add_executable(display_robot_states display_robot_states.cpp)
+
+
 target_compile_definitions(gravity_comp PRIVATE PINOCCHIO_WITH_HPP_FCL
                                                 PINOCCHIO_WITH_URDFDOM)
 target_link_libraries(gravity_comp CycloneDDS-CXX::ddscxx flexivdata
                       flexiv::flexiv_rdk pinocchio::pinocchio)
 
+target_link_libraries(display_robot_states flexiv::flexiv_rdk )
 # add flag PINOCCHIO_WITH_HPP_FCL
 
 # Link both executables to idl data type library and ddscxx.

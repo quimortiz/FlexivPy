@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import rerun as rr
-import time
 from pinocchio.robot_wrapper import RobotWrapper
 import FlexivPy.robot.vis.rerunio as rerunio
 
@@ -29,7 +28,7 @@ class Rerun_full_log(SubscriberNode):
         super().__init__(
             topic_names=["FlexivState", "FlexivCmd", "EnvImage"],
             topic_types=[FlexivState, FlexivCmd, EnvImage],
-            dt=0.1,
+            dt=0.05,
             max_time_s=100,
             warning_dt=0.2,
             messages_to_keep=1,

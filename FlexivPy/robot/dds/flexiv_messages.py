@@ -1,12 +1,10 @@
-from enum import auto
-from typing import TYPE_CHECKING, Optional
 from dataclasses import dataclass
 from dataclasses import dataclass, field
 
 import cyclonedds.idl as idl
 import cyclonedds.idl.annotations as annotate
 import cyclonedds.idl.types as types
-from cyclonedds.idl.types import int64, float32, array, int32, byte, sequence
+from cyclonedds.idl.types import array, int32, byte, sequence
 
 
 @dataclass

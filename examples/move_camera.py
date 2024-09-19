@@ -1,26 +1,24 @@
 import FlexivPy.robot.sim.sim_robot as sim_robot
 import FlexivPy.robot.robot_client as robot_client
-import FlexivPy.robot.model.model_robot as model_robot
 import numpy as np
 import time
-import yaml
 import argparse
 import pinocchio as pin
 import easy_controllers
 import pinocchio as pin
-from FlexivPy.robot.dds.flexiv_messages import (
-    FlexivCmd,
-    FlexivState,
-    EnvState,
-    EnvImage,
-)
 import argparse
 import os
 from pinocchio.robot_wrapper import RobotWrapper
 import subprocess
-
-
 import cv2
+
+# Run with:
+# PYTHONPATH=. python examples/move_camera.py --mode=sim
+# PYTHONPATH=. python examples/move_camera.py --mode=sim_async
+# PYTHONPATH=. python examples/move_camera.py --mode=real
+
+
+
 
 def view_image(image):
     cv2.imshow(f"tmp-see_images", image)
@@ -121,9 +119,8 @@ try :
         easy_controllers.GoJointConfigurationSlow(
             qgoal=np.array([0.0, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000]),
             max_dq=0.01),
-        sync_sim=args.mode == "sim",
-        dt_sim=robot.dt if args.mode == "sim" else None,
-        dt=0.005,
+        sync_sim=args.mode == "sim", dt_sim=robot.dt if args.mode == "sim" else None,
+        dt=0.01,
         max_time=120,
     )
 
@@ -146,6 +143,7 @@ try :
         view_image(env_image)
 
     callback = Callback()
+    print('starting controller')
     status = easy_controllers.run_controller(
         robot,
         easy_controllers.GoJointConfiguration(
@@ -155,7 +153,7 @@ try :
             kp_scale=kp_scale,
             kv_scale=kv_scale,
         ),
-        dt=0.005,
+        dt=0.01,
         max_time=120,
         sync_sim=args.mode == "sim",
         dt_sim=robot.dt if args.mode == "sim" else None,
@@ -163,7 +161,7 @@ try :
     )
 
 
-    print("controller done!")
+    print("controller done!\n Status is ", status)
 
     print("current state of the robot")
     print(robot.get_robot_state())
@@ -183,7 +181,66 @@ try :
         view_image(img)
 
 
+    # we can also move camera to desired position and get image
+    # Method A
+    s = robot.get_robot_state()
+    T = pin_model.framePlacement( np.array(s.q), frame_id_flange, update_kinematics=True)
+
+    p  = T.translation
+    p += np.array([0.1, 0.1, 0.1])
+    oMdes = pin.SE3(T.rotation,p )
+    controller = easy_controllers.GoEndEffectorPose(
+        robot=pin_model,
+        frame_id = frame_id_flange,
+        error = 1e-2,
+        oMdes  =oMdes
+    )
+
+    status = easy_controllers.run_controller(
+        robot,
+        controller, 
+        sync_sim=args.mode == "sim",
+        dt_sim=robot.dt if args.mode == "sim" else None,
+        dt=0.01,
+        max_time=120,
+    )
+    # Method B
+    print('status is', status)
+
+    view_image(robot.get_env_image())
+
+    s = robot.get_robot_state()
+    T = pin_model.framePlacement( np.array(s.q), frame_id_flange, update_kinematics=True)
+
+    p  = T.translation
+    p -= np.array([0.2, 0.2, 0.2])
+    rpy = pin.rpy.rpyToMatrix(np.array([0,0,1.]))
+    desM = T.rotation @ rpy
+    print('desM is')
+    print(desM)
+    oMdes = pin.SE3(desM,p )
+    controller = easy_controllers.InverseKinematicsController(
+        robot = pin_model,  oMdes = oMdes,
+        approx_dt = 0.01,
+        frame_id = frame_id_flange, kp_scale= 1.2 * kp_scale, kv_scale = 1.2 * kv_scale)
+
+    status = easy_controllers.run_controller(
+        robot,
+        controller, 
+        sync_sim=args.mode == "sim",
+        dt_sim=robot.dt if args.mode == "sim" else None,
+        dt=0.01,
+        max_time=120,
+    )
+
+
+    print('status is', status)
+
+    view_image(robot.get_env_image())
+
 finally:
+    print("closing the robot")
+    time.sleep(1.)
     robot.close()
 
     if camera_proc is not None:
