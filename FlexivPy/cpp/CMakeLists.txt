@@ -67,5 +67,3 @@ target_link_libraries(display_robot_states flexiv::flexiv_rdk )
 # set_property(TARGET ddscxxHelloworldPublisher PROPERTY CXX_STANDARD
 # ${cyclonedds_cpp_std_to_use}) set_property(TARGET ddscxxHelloworldSubscriber
 # PROPERTY CXX_STANDARD ${cyclonedds_cpp_std_to_use})
-install(TARGETS gravity_comp RUNTIME DESTINATION /bin)
-install(TARGETS robot_server RUNTIME DESTINATION /bin)
