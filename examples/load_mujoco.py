@@ -1,4 +1,4 @@
-from FlexivPy.robot.model.model_robot import FlexivModel
+from FlexivPy.robot.model.pinocchio import FlexivModel
 import numpy as np
 import FlexivPy.robot.sim.sim_robot as sim_robot
 import mujoco

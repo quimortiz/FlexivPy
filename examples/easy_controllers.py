@@ -66,7 +66,7 @@ def run_controller(
 
         if sync_sim:
             if dt_sim is None:
-                raise ValueError("error!")
+                raise ValueError("when using synchronous simulation mode, you need to provide dt_sim!")
             else:
                 num_steps = int(dt // dt_sim)
                 for _ in range(num_steps):

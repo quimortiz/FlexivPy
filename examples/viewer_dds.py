@@ -1,5 +1,5 @@
 # This viewer will subscribe to the dds topic and display the robot state online.
-import FlexivPy.robot.model.model_robot as model_robot
+import FlexivPy.robot.model.pinocchio as pinocchio
 import numpy as np
 import time
 
@@ -19,7 +19,7 @@ topic_state = Topic(domain_participant, "FlexivState", FlexivState)
 subscriber = Subscriber(domain_participant)
 reader = DataReader(subscriber, topic_state)
 
-robot_model = model_robot.FlexivModel(render=True)
+robot_model = pinocchio.FlexivModel(render=True)
 
 # TODO: wrap this in a nice class that servers as example for other users
 # E.g. timeoutime, Hz, ...

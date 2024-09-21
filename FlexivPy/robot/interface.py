@@ -26,7 +26,7 @@ import cv2
 from typing import List
 
 
-class Flexiv_client:
+class FlexivRobot:
     def __init__(self, create_server_cmd: List[str] = []):
 
         self.create_server_cmd = create_server_cmd

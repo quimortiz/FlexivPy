@@ -3,7 +3,7 @@ import numpy as np
 import yaml
 
 import FlexivPy.robot.sim.sim_robot as sim_robot
-import FlexivPy.robot.model.model_robot as model_robot
+import FlexivPy.robot.model.pinocchio as pinocchio
 import numpy as np
 import time
 
@@ -35,8 +35,6 @@ from FlexivPy.robot.dds.flexiv_messages import (
 
 import cv2
 
-
-
 def view_image(image):
     cv2.imshow(f"tmp-async", image)
     while True:
@@ -48,7 +46,7 @@ def view_image(image):
 ASSETS_PATH = "assets/"
 
 
-class FlexivSim_dds_server:
+class FlexivSim:
     def __init__(self, sim_robot: sim_robot.FlexivSim, dt, max_time):
 
         self.CV2 = None
@@ -245,7 +243,7 @@ if __name__ == "__main__":
         q0 = np.array(q0)
 
     dt = 0.001
-    robot_model = model_robot.FlexivModel(
+    robot_model = pinocchio.FlexivModel(
         render=False,
         q0=config.get("q0", None),
         urdf=args.urdf,

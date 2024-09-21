@@ -1,5 +1,5 @@
 import FlexivPy.robot.sim.sim_robot as sim_robot
-import FlexivPy.robot.robot_client as robot_client
+import FlexivPy.robot.interface as interface
 import numpy as np
 import time
 import argparse
@@ -66,11 +66,11 @@ elif args.mode == "sim_async":
         "--joints",
     ] + joints
 
-    robot = robot_client.Flexiv_client(cmd)
+    robot = interface.Flexiv_client(cmd)
 elif args.mode == "real":
     # I can also start the server here if i provide a cmd,
     # similar to sim async.
-    robot = robot_client.Flexiv_client()
+    robot = interface.Flexiv_client()
 
 
 try:

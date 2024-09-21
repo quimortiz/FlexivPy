@@ -1,5 +1,5 @@
 import FlexivPy.robot.sim.sim_robot as sim_robot
-import FlexivPy.robot.robot_client as robot_client
+import FlexivPy.robot.interface as interface
 import numpy as np
 import time
 import argparse
@@ -99,12 +99,12 @@ if args.mode == "sim_async":
         "--joints",
     ] + joints
 
-    robot = robot_client.Flexiv_client(cmd)
+    robot = interface.Flexiv_client(cmd)
 
 # todo: run this on the real robot.
 
 if args.mode == "real":
-    robot = robot_client.Flexiv_client()
+    robot = interface.Flexiv_client()
     cmd_camera = [ "python",  "examples/image_publisher.py", "--camera_id", "8" ]
     camera_proc = subprocess.Popen(cmd_camera)
 

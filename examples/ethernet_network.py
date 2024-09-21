@@ -1,5 +1,5 @@
 import easy_controllers
-from FlexivPy.robot.robot_client import Flexiv_client
+from FlexivPy.robot.interface import Flexiv_client
 import numpy as np
 
 # Copy the following into a config file, e.g, cyclonedds.xml

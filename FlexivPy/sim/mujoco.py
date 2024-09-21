@@ -10,7 +10,7 @@ import pinocchio as pin
 import FlexivPy.robot.dds.flexiv_messages as flexiv_messages
 
 from FlexivPy import ASSETS_PATH
-
+import time
 
 import cv2
 
@@ -23,7 +23,7 @@ def view_image(image):
     cv2.destroyWindow("tmp")
 
 
-class FlexivSim:
+class FlexivMujocoSim:
     def __init__(
         self,
         render=False,
@@ -35,7 +35,7 @@ class FlexivSim:
         pin_model=None,
         render_images=False,
         object_names=[],
-        joints=None,
+        joint_names=None,
         has_gripper=False,
         camera_name = "static_camera", 
         gravity = np.array([0., 0., -9.81])
@@ -52,9 +52,9 @@ class FlexivSim:
             self.q0 = np.array([0.0, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000])
         # initialize the command with a zero buffer
         self.cmd = flexiv_messages.FlexivCmd()
-        # Get all the joints if the joint list is not provided by the user
-        if joints is None:
-            self.joints = [
+        # Get all the joint_names if the joint list is not provided by the user
+        if joint_names is None:
+            self.joint_names = [
                 "joint1",
                 "joint2",
                 "joint3",
@@ -64,7 +64,7 @@ class FlexivSim:
                 "joint7",
             ]
         else:
-            self.joints = joints
+            self.joint_names = joint_names
 
         self.kv_damping = kv_damping
         self.object_names = object_names
@@ -132,10 +132,10 @@ class FlexivSim:
             )
 
     def get_robot_joints(self):
-        return np.array([self.data.joint(j).qpos[0] for j in self.joints])
+        return np.array([self.data.joint(j).qpos[0] for j in self.joint_names])
 
     def get_robot_vel(self):
-        return np.array([self.data.joint(j).qvel[0] for j in self.joints])
+        return np.array([self.data.joint(j).qvel[0] for j in self.joint_names])
 
     def get_gripper_state(self):
         if self.data.ctrl[-1] == 255:
@@ -160,11 +160,11 @@ class FlexivSim:
             return "open"
 
     def set_robot_joints(self, q):
-        for i, j in enumerate(self.joints):
+        for i, j in enumerate(self.joint_names):
             self.data.joint(j).qpos[0] = q[i]
 
     def set_robot_vel(self, dq):
-        for i, j in enumerate(self.joints):
+        for i, j in enumerate(self.joint_names):
             self.data.joint(j).qvel[0] = dq[i]
 
     def read_config(self, file):
@@ -269,3 +269,5 @@ class FlexivSim:
         if self.render:
             self.viewer.sync()
             self.viewer.close()
+        # wait for the viewer to close
+        time.sleep(0.5)

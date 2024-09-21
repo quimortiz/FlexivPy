@@ -1,4 +1,4 @@
-from FlexivPy.robot.model.model_robot import FlexivModel
+from FlexivPy.robot.model.pinocchio import FlexivModel
 import numpy as np
 import pinocchio as pin
 

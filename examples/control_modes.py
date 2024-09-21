@@ -1,5 +1,5 @@
 import FlexivPy.robot.sim.sim_robot as sim_robot
-import FlexivPy.robot.robot_client as robot_client
+import FlexivPy.robot.interface as interface
 import numpy as np
 import time
 import argparse
@@ -35,7 +35,7 @@ frame_id_flange = pin_model.model.getFrameId("flange")
 
 
 
-robot = robot_client.Flexiv_client()
+robot = interface.Flexiv_client()
 
 qhome = np.array([0.0, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000])
 q1 = np.array([1.0, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000])

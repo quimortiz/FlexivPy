@@ -1,10 +1,10 @@
-import FlexivPy.robot.robot_client as robot_client
+import FlexivPy.robot.interface as interface
 import numpy as np
 import time
 import easy_controllers
 
 
-robot = robot_client.Flexiv_client()
+robot = interface.Flexiv_client()
 
 controller = easy_controllers.GoJointConfiguration(
     qdes=np.array([0.0, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000]),

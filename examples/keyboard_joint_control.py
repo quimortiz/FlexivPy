@@ -1,7 +1,7 @@
 import pygame
 import numpy as np
 
-import FlexivPy.robot.robot_client as robot_client
+import FlexivPy.robot.interface as interface
 import numpy as np
 import pinocchio as pin
 import easy_controllers
@@ -108,7 +108,7 @@ class KeyboardJointControl:
 
 if __name__ == "__main__":
 
-    robot = robot_client.Flexiv_client(render=False, create_sim_server=False)
+    robot = interface.Flexiv_client(render=False, create_sim_server=False)
 
     urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/flexiv_rizon10s_kinematics.urdf"
     meshes = "/home/quim/code/FlexivPy/FlexivPy/assets/meshes/"

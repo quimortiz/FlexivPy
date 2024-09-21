@@ -1,10 +1,10 @@
-import FlexivPy.robot.robot_client as robot_client
+import FlexivPy.robot.interface as interface
 import easy_controllers
 
 
 slow_states = []
 
-robot = robot_client.Flexiv_client(render=False, create_sim_server=False)
+robot = interface.Flexiv_client(render=False, create_sim_server=False)
 import pickle
 
 with open("array.pkl", "rb") as f:
