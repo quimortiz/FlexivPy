@@ -20,6 +20,7 @@ def view_image(image):
 class FlexivSimMujoco:
     def __init__(
         self,
+        mode = "torque",
         render=False,
         dt=0.001,
         xml_path=None,
@@ -34,6 +35,8 @@ class FlexivSimMujoco:
         camera_name = "static_camera", 
         gravity = np.array([0., 0., -9.81])
     ):
+        assert mode in ['position', 'velocity', 'torque'], 'Mode can only be: position, velocity, or torque'
+        self.mode = mode
         self.dt = dt
         self.camera_name = camera_name
         self.has_gripper = has_gripper
@@ -44,8 +47,10 @@ class FlexivSimMujoco:
             self.q0 = q0
         else:
             self.q0 = np.array([0.0, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000])
+        
         # initialize the command with a zero buffer
         self.cmd = flexiv_messages.FlexivCmd()
+        self.cmd.q = self.q0
         # Get all the joint_names if the joint list is not provided by the user
         if joint_names is None:
             self.joint_names = [
@@ -174,6 +179,7 @@ class FlexivSimMujoco:
 
     def reset_state_robot(self, q, dq):
         self.step_counter = 0
+        self.integrated_q = q.copy()
         self.set_robot_joints(q)
         self.set_robot_vel(dq)
         mujoco.mj_forward(self.model, self.data)
@@ -209,29 +215,39 @@ class FlexivSimMujoco:
         self.cmd = cmd
 
     def set_u(self):
-        q_des = np.clip(self.cmd.q, self.joints_lower_limits, self.joints_upper_limits)
-        tau = (
-            np.array(self.cmd.tau_ff)
-            + np.array(self.cmd.kp) * (np.array(q_des) - self.get_robot_joints())
-            + np.array(self.cmd.kv) * (np.array(self.cmd.dq) - self.get_robot_vel())
-        )
+        if self.mode == 'position':
+            self.set_robot_joints(self.cmd.q)
+            self.set_robot_vel(self.cmd.dq)
+            self.data.ctrl = np.zeros(len(self.cmd.tau_ff))
+        elif self.mode == 'velocity':
+            self.integrated_q+=np.array(self.cmd.dq)*self.dt
+            self.set_robot_joints(self.integrated_q)
+            self.set_robot_vel(self.cmd.dq)
+            self.data.ctrl = np.zeros(len(self.cmd.tau_ff))
+        else:
+            q_des = np.clip(self.cmd.q, self.joints_lower_limits, self.joints_upper_limits)
+            tau = (
+                np.array(self.cmd.tau_ff)
+                + np.array(self.cmd.kp) * (np.array(q_des) - self.get_robot_joints())
+                + np.array(self.cmd.kv) * (np.array(self.cmd.dq) - self.get_robot_vel())
+            )
 
-        if not self.cmd.tau_ff_with_gravity:
-            tau += self.get_gravity()
+            if not self.cmd.tau_ff_with_gravity:
+                tau += self.get_gravity()
 
-        if self.kv_damping > 0:
-            tau -= self.kv_damping * self.get_robot_vel()
+            if self.kv_damping > 0:
+                tau -= self.kv_damping * self.get_robot_vel()
 
-        if self.has_gripper:
-            if self.cmd.g_cmd == "close":
-                tau = np.append(tau, 255)
-            else:
-                tau = np.append(tau, 0)
+            if self.has_gripper:
+                if self.cmd.g_cmd == "close":
+                    tau = np.append(tau, 255)
+                else:
+                    tau = np.append(tau, 0)
 
-        self.data.ctrl = np.clip(tau, -100*np.ones(tau.shape[0]), 100*np.ones(tau.shape[0]))
+            self.data.ctrl = np.clip(tau, -100*np.ones(tau.shape[0]), 100*np.ones(tau.shape[0]))
 
     def get_robot_tau(self):
-        return self.data.ctrl[:7]
+        return (self.data.qfrc_constraint.squeeze()+self.data.qfrc_smooth.squeeze())[0:7]
 
     def get_robot_state(self):
         return flexiv_messages.FlexivState(

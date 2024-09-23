@@ -19,6 +19,7 @@ def main():
     argp.add_argument("--render_images", action="store_true", help="render images")
     argp.add_argument("--xml_path", type=str, default=None, help="xml path")
     argp.add_argument("--timeout", type=float, default=np.inf, help="simulation duration")
+    argp.add_argument("--mode", type=str, default='torque', help="control mode: position, velocity, or torque")
     argp.add_argument("--urdf", type=str, default=None, help="urdf path")
     argp.add_argument(
         "--meshes_dir", type=str, default=None, help="meshes directrory path"
@@ -43,6 +44,7 @@ def main():
 
     simulator = FlexivSimMujoco(
                                 dt=dt,
+                                mode=args.mode,
                                 render=args.render,
                                 xml_path=args.xml_path,
                                 q0=q0,
