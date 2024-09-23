@@ -1,6 +1,3 @@
-# create a simulation robot using mujoco
-
-
 import mujoco
 import mujoco.viewer
 import numpy as np
@@ -8,10 +5,8 @@ import os
 import yaml
 import pinocchio as pin
 import FlexivPy.robot.dds.flexiv_messages as flexiv_messages
-
 from FlexivPy import ASSETS_PATH
 import time
-
 import cv2
 
 
@@ -22,8 +17,7 @@ def view_image(image):
             break
     cv2.destroyWindow("tmp")
 
-
-class FlexivMujocoSim:
+class FlexivSimMujoco:
     def __init__(
         self,
         render=False,
@@ -79,7 +73,10 @@ class FlexivMujocoSim:
         else:
             self.model = mujoco.MjModel.from_xml_path(xml_path)
         
-        self.data = mujoco.MjData(self.model)    
+        self.data = mujoco.MjData(self.model)
+        self.joints_upper_limits = np.array([self.model.joint(joint_name).range[1] for joint_name in self.joint_names])
+        self.joints_lower_limits = np.array([self.model.joint(joint_name).range[0] for joint_name in self.joint_names])
+        
         self.model.opt.gravity = self.gravity.squeeze()
         self.model.opt.timestep = self.dt    
         # Enable camera simulation?
@@ -127,9 +124,10 @@ class FlexivMujocoSim:
         print("robot sim is ready!")
 
     def get_gravity(self):
-        return pin.computeGeneralizedGravity(
-                self.pin_model.model, self.pin_model.data, self.get_robot_joints()
-            )
+        return np.array([self.data.joint(j).qfrc_bias[0] for j in self.joint_names])
+        # return pin.computeGeneralizedGravity(
+        #         self.pin_model.model, self.pin_model.data, self.get_robot_joints()
+        #     )
 
     def get_robot_joints(self):
         return np.array([self.data.joint(j).qpos[0] for j in self.joint_names])
@@ -181,8 +179,8 @@ class FlexivMujocoSim:
         mujoco.mj_forward(self.model, self.data)
 
     def step(self):
-        self.step_counter += 1
         self.set_u()
+        self.step_counter += 1
         mujoco.mj_step(self.model, self.data)
         # Render every render_ds_ratio steps (60Hz GUI update)
         # TODO: is this necessary?
@@ -203,34 +201,34 @@ class FlexivMujocoSim:
             # input('heere is the rendered image')
             # view_image(self.last_camera_image)
             # time.sleep(0.0001)
+    
+    def set_cmd(self, cmd):
+        """
+        cmd: dictionary with keys 'q', 'dq', 'kp', 'kv', 'tau_ff'
+        """
+        self.cmd = cmd
 
     def set_u(self):
-        cmd = self.cmd
+        q_des = np.clip(self.cmd.q, self.joints_lower_limits, self.joints_upper_limits)
         tau = (
-            np.array(cmd.tau_ff)
-            + np.array(cmd.kp) * (np.array(cmd.q) - self.get_robot_joints())
-            + np.array(cmd.kv) * (np.array(cmd.dq) - self.get_robot_vel())
+            np.array(self.cmd.tau_ff)
+            + np.array(self.cmd.kp) * (np.array(q_des) - self.get_robot_joints())
+            + np.array(self.cmd.kv) * (np.array(self.cmd.dq) - self.get_robot_vel())
         )
 
-        if not cmd.tau_ff_with_gravity:
+        if not self.cmd.tau_ff_with_gravity:
             tau += self.get_gravity()
 
         if self.kv_damping > 0:
             tau -= self.kv_damping * self.get_robot_vel()
 
         if self.has_gripper:
-            if cmd.g_cmd == "close":
+            if self.cmd.g_cmd == "close":
                 tau = np.append(tau, 255)
             else:
                 tau = np.append(tau, 0)
 
-        self.data.ctrl = tau
-
-    def set_cmd(self, cmd):
-        """
-        cmd: dictionary with keys 'q', 'dq', 'kp', 'kv', 'tau_ff'
-        """
-        self.cmd = cmd
+        self.data.ctrl = np.clip(tau, -100*np.ones(tau.shape[0]), 100*np.ones(tau.shape[0]))
 
     def get_robot_tau(self):
         return self.data.ctrl[:7]

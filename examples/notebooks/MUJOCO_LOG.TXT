@@ -1,0 +1,96 @@
+Sun Sep 22 00:51:57 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.0110.
+
+Sun Sep 22 00:55:54 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 3. The simulation is unstable. Time = 0.0010.
+
+Sun Sep 22 00:56:03 2024
+WARNING: Nan, Inf or huge value in QPOS at DOF 0. The simulation is unstable. Time = 2.5570.
+
+Sun Sep 22 00:56:03 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 0.0010.
+
+Sun Sep 22 00:56:14 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 0.0010.
+
+Sun Sep 22 00:56:26 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 0.0010.
+
+Sun Sep 22 01:01:17 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 2. The simulation is unstable. Time = 0.0470.
+
+Sun Sep 22 01:02:25 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.0660.
+
+Sun Sep 22 02:45:25 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 100.4590.
+
+Sun Sep 22 03:47:52 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.0120.
+
+Sun Sep 22 03:56:22 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 2. The simulation is unstable. Time = 14.1051.
+
+Sun Sep 22 03:58:28 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.0420.
+
+Sun Sep 22 04:05:07 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 5. The simulation is unstable. Time = 75.1680.
+
+Sun Sep 22 04:28:09 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 798.7740.
+
+Sun Sep 22 04:37:07 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 93.2440.
+
+Sun Sep 22 04:37:44 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 0.1560.
+
+Sun Sep 22 21:57:50 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 4. The simulation is unstable. Time = 28.0700.
+
+Sun Sep 22 22:01:29 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 1. The simulation is unstable. Time = 0.0660.
+
+Sun Sep 22 22:06:11 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 1.6540.
+
+Sun Sep 22 22:06:12 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 1.6540.
+
+Sun Sep 22 22:06:13 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 1.6540.
+
+Sun Sep 22 22:06:14 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 1.6540.
+
+Sun Sep 22 22:06:33 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 1.6540.
+
+Sun Sep 22 22:06:34 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 1.6540.
+
+Sun Sep 22 22:06:35 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 1.6540.
+
+Sun Sep 22 22:06:36 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 1.6540.
+
+Sun Sep 22 22:06:37 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 1.6540.
+
+Sun Sep 22 22:06:38 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 1.6540.
+
+Sun Sep 22 22:06:39 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 1.6540.
+
+Sun Sep 22 22:54:40 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 0.0460.
+
+Sun Sep 22 23:02:21 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 6. The simulation is unstable. Time = 0.3040.
+
+Sun Sep 22 23:05:57 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 6.0680.
+

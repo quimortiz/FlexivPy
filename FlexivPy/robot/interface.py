@@ -26,7 +26,7 @@ import cv2
 from typing import List
 
 
-class FlexivRobot:
+class FlexivDDSClient:
     def __init__(self, create_server_cmd: List[str] = []):
 
         self.create_server_cmd = create_server_cmd
@@ -96,14 +96,6 @@ class FlexivRobot:
     def set_cmd(self, cmd):
         """ """
         self.writer.write(cmd)
-
-    def step(self):
-        """ """
-        if not self.warning_step_msg_send:
-            self.warning_step_msg_send = True
-            print(
-                "WARNING: In the client the step runs asynchronusly! \n Wee keep the function here to use same interface!"
-            )
 
     def close(self):
         """ """

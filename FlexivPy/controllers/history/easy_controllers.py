@@ -1,93 +1,13 @@
 import numpy as np
 import pinocchio as pin
-
 from numpy.linalg import solve
 import time
 from scipy.optimize import minimize
 from FlexivPy.robot.dds.flexiv_messages import (
     FlexivCmd,
 )
-
 import numpy as np
-import queue
-
-from examples.utils import *
-
-# TODO: small demo of goal reaching tasks, opening and closing the gripper!
-# TODO: continue here!!
-
-
-from enum import Enum
-
-
-class ControllerStatus(Enum):
-    UNKNOWN = 0
-    GOAL_REACHED = 1
-    NOT_APPLICABLE = 2
-    MAX_TIME = 3
-    ERROR = 4
-
-
-def run_controller(
-    robot, controller, dt, max_time, sync_sim=False, dt_sim=None, callback=None
-):
-    s = robot.get_robot_state()
-    controller.setup(s)
-    tic_start = time.time()
-    exit_status = ControllerStatus.UNKNOWN
-    counter = 0
-    while True:
-        tic = time.time()
-        s = robot.get_robot_state()
-
-        elapsed_time = tic - tic_start if not sync_sim else counter * dt
-
-        if not controller.applicable(s, elapsed_time):
-            print("controller is not applicable")
-            exit_status = ControllerStatus.NOT_APPLICABLE
-            break
-
-        if controller.goal_reached(s, elapsed_time):
-            exit_status = ControllerStatus.GOAL_REACHED
-            print("goal reached")
-            break
-
-        if elapsed_time > max_time:
-            exit_status = ControllerStatus.MAX_TIME
-            print("max time reached")
-            break
-
-        cmd = controller.get_control(s, elapsed_time)
-
-        robot.set_cmd(cmd)
-
-        if callback is not None:
-            callback(robot, cmd, elapsed_time)
-
-        if sync_sim:
-            if dt_sim is None:
-                raise ValueError("when using synchronous simulation mode, you need to provide dt_sim!")
-            else:
-                num_steps = int(dt // dt_sim)
-                for _ in range(num_steps):
-                    robot.step()
-
-        time.sleep(max(0, dt - (time.time() - tic)))
-        # We also apply this in simulation because we don't want to go faster than realtime.
-        counter += 1
-    # except:
-    #     exit_status = ControllerStatus.ERROR
-    return exit_status
-
-
-
-
-
-
-
-
-
-
+from FlexivPy.controllers.utils import *
 
 
 class EndEffPose2:
@@ -686,7 +606,6 @@ class JointFloating:
         """ """
         return False
 
-
 class Stay:
     def __init__(self):
         self.kp = 1 * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
@@ -705,93 +624,4 @@ class Stay:
     def goal_reached(self, state, tic):
         """ """
         return False
-
-
-class OpenGripper:
-    def __init__(self, stay_here=True, max_error_stay_here=1e-1):
-        self.stay_here = stay_here
-        self.kp = 1.0 * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
-        self.kv = 1.0 * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
-        self.max_error_stay_here = max_error_stay_here
-
-    def setup(self, s):
-        self.q = np.array(s.q)
-
-    def get_control(self, state, tic):
-        if not self.stay_here:
-            return FlexivCmd(g_cmd="open")
-        else:
-            return FlexivCmd(g_cmd="open", q=self.q, kp=self.kp, kv=self.kv)
-
-    def applicable(self, state, tic):
-        """ """
-        if self.stay_here:
-            if np.linalg.norm(self.q - state.q) > self.max_error_stay_here:
-                return False
-        return True
-
-    def goal_reached(self, state, tic):
-        """ """
-        if state.g_state == "open":
-            return True
-        else:
-            return False
-
-
-class CloseGripper:
-    def __init__(self, stay_here=True, max_error_stay_here=1e-1):
-        self.stay_here = stay_here
-        self.kp = 1.0 * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
-        self.kv = 1.0 * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
-        self.max_error_stay_here = max_error_stay_here
-
-    def setup(self, s):
-        self.q = np.array(s.q)
-
-    def get_control(self, state, tic):
-        if not self.stay_here:
-            return FlexivCmd(g_cmd="close")
-        else:
-            return FlexivCmd(q=self.q, g_cmd="close", kp=self.kp, kv=self.kv)
-
-    def applicable(self, state, tic):
-        """ """
-        if self.stay_here:
-            if np.linalg.norm(self.q - state.q) > self.max_error_stay_here:
-                return False
-        return True
-
-    def goal_reached(self, state, tic):
-        """ """
-
-        if state.g_state == "closed" or state.g_state == "holding":
-            return True
-        else:
-            return False
-
-
-class StopGripper:
-    def __init__(self, stay_here=True):
-        self.stay_here = stay_here
-        self.kp = 1.0 * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
-        self.kv = 1.0 * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
-
-    def setup(self, s):
-        self.q = np.array(s.q) 
-
-    def get_control(self, state, tic):
-        # TODO: check that this is running in the robot.
-        if not self.stay_here:
-            return FlexivCmd(g_cmd="stop")
-        else:
-            return FlexivCmd(g_cmd="stop", q=self.q, kp=self.kp, kv=self.kv)
-
-    def applicable(self, state, tic):
-        """ """
-        if self.stay_here:
-            if np.linalg.norm(self.q - state.q) > self.max_error_stay_here:
-                return False
-        return True
-
-
 

@@ -13,9 +13,8 @@ controller = easy_controllers.GoJointConfiguration(
 )
 
 status = easy_controllers.run_controller(robot, controller, dt=0.005, max_time=120)
-
-
 controller = easy_controllers.OpenGripper()
+
 status = easy_controllers.run_controller(robot, controller, dt=0.005, max_time=10)
 
 controller = easy_controllers.CloseGripper()
