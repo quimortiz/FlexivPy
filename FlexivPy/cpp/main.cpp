@@ -189,10 +189,10 @@ struct RobotController {
         check_collisions(check_collisions) {
 
     if (t_use_gripper) {
-      urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/"
+      urdf = "/home/quim/code/alex/tamp_mpc/FlexivPy/FlexivPy/assets/"
              "flexiv_rizon10s_kinematics_w_gripper_mass.urdf";
     } else {
-      urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/"
+      urdf = "/home/quim/code/alex/tamp_mpc/FlexivPy/FlexivPy/assets/"
              "flexiv_rizon10s_kinematics.urdf";
     }
 
@@ -220,7 +220,7 @@ struct RobotController {
 
     pinocchio::urdf::buildGeom(
         model, urdf, pinocchio::COLLISION, geom_model,
-        "/home/quim/code/FlexivPy/FlexivPy/assets/meshes/");
+        "/home/quim/code/alex/tamp_mpc/FlexivPy/FlexivPy/assets/meshes/");
 
     geom_model.addAllCollisionPairs();
     if (srdf != "") {
@@ -432,7 +432,7 @@ private:
   std::string urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/"
                      "flexiv_rizon10s_kinematics.urdf";
   std::string srdf =
-      "/home/quim/code/FlexivPy/FlexivPy/assets/r10s_with_capsules.srdf";
+      "/home/quim/code/alex/tamp_mpc/FlexivPy/FlexivPy/assets/r10s_with_capsules.srdf";
 
   flexiv::rdk::Robot robot;
   flexiv::rdk::Gripper gripper;

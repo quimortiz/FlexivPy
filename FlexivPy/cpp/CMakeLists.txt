@@ -18,6 +18,7 @@ if(NOT TARGET CycloneDDS-CXX::ddscxx)
   find_package(CycloneDDS-CXX REQUIRED)
 endif()
 
+find_package(Boost REQUIRED)
 
 find_package(flexiv_rdk REQUIRED)
 find_package(pinocchio REQUIRED)

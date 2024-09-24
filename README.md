@@ -30,6 +30,11 @@ X Run controller by controller interface
 
 We recommend to install all packages in a conda environment!
 
+```
+conda install conda-forge::cmake
+conda install conda-forge::mim-solvers
+```
+
 ## Async Simulation
 
 We need Cyclone DDS with Python Bindings
@@ -39,7 +44,7 @@ git clone https://github.com/eclipse-cyclonedds/cyclonedds
 cd cyclonedds && mkdir build install && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX
 cmake --build . --config RelWithDebInfo --target install
-cd ..
+cd ../..
 export CYCLONEDDS_HOME=$CONDA_PREFIX
 pip3 install git+https://github.com/eclipse-cyclonedds/cyclonedds-python
 ```
@@ -52,22 +57,16 @@ We need Cyclone DDS with both C++ bindings and Python Bindings
 
 
 
-git clone https://github.com/eclipse-cyclonedds/cyclonedds-cxx                           (/home/quim/code/alex/env) 
-                                          cd cyclonedds-cxx && mkdir build && cd build
-                                          cmake -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DCMAKE_PREFIX_PATH=$CONDA_PREFIX ..
-                                          cmake --build .
-                                          cmake --build . --target install
-
-
 ```
 git clone https://github.com/eclipse-cyclonedds/cyclonedds-cxx
-cd build
-cmake -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX
-        -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
-        ..
+cd cyclonedds-cxx && mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DCMAKE_PREFIX_PATH=$CONDA_PREFIX ..
 cmake --build .
 cmake --build . --target install
+cd ../..
 ```
+
+
 
 Install Flexiv Sdk
 
@@ -80,11 +79,12 @@ https://github.com/flexivrobotics/flexiv_rdk
 git clone https://github.com/flexivrobotics/flexiv_rdk
 cd flexiv_rdk/thirdparty
 bash build_and_install_dependencies.sh $CONDA_PREFIX
-cd ../..
+cd ..
 mkdir build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DINSTALL_PYTHON_RDK=OFF
 cd flexiv_rdk/build
 cmake --build . --target install --config Release
+cd ../..
 ```
 
 
