@@ -21,7 +21,12 @@ class RRTController:
         visualize = False, 
         kp = 2.0 * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0]), 
         kv = 1.5 * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0]),
+        control_mode='velocity'
     ):
+        try:
+            self.control_mode = {'velocity':3, 'torque':2, 'position':1}[control_mode]
+        except:
+            raise Exception('The selected control mode is not valid!')
         self.kp = kp
         self.kv = kv
         self.visualize = visualize
@@ -116,12 +121,12 @@ class RRTController:
 
         desq_next = q + self.dt * velocity
 
-
         return FlexivCmd(
             q=desq_next,
             dq=velocity,
             kp=self.kp,
             kv=self.kv,
+            mode = self.control_mode
         )
 
     def applicable(self, s, tic):
