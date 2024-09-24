@@ -130,3 +130,24 @@ class RRTController:
     def goal_reached(self, s, tic):
         q = np.array(s.q)
         return np.linalg.norm(q - self.goal) < self.goal_tolerance
+
+
+class JointFloating:
+    def __init__(self, kv_scale=1., dt=0.01):
+        self.kv_scale = kv_scale
+        self.kv = kv_scale * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+        self.dt = dt
+
+    def setup(self, s):
+        pass
+
+    def get_control(self, state, tic):
+        return FlexivCmd(kv=self.kv)
+
+    def applicable(self, state, tic):
+        """ """
+        return True
+
+    def goal_reached(self, state, tic):
+        """ """
+        return False

@@ -20,7 +20,8 @@ class DiffIKController:
                  joint_kv = np.ones(7)*8,
                  k_reg = 0.5*np.diag([10, 10, 10, 10, 10, 10, 10]),
                  dq_max = 10, 
-                 T_cmd = None):
+                 T_cmd = None,
+                 control_mode='velocity'):
         # define solver
         self.model = model
         self.kp = kp
@@ -32,6 +33,10 @@ class DiffIKController:
         self.dt = dt
         self.joint_kv = joint_kv
         self.dq_max=dq_max
+        try:
+            self.control_mode = {'velocity':3, 'torque':2, 'position':1}[control_mode]
+        except:
+            raise Exception('The selected control mode is not valid!')
 
     def __call__(self, q, dq, T_cmd):
         _q = np.array(q).reshape(7,1)
@@ -71,6 +76,7 @@ class DiffIKController:
             dq=dq_des,
             kp=np.zeros(7),
             kv=self.joint_kv,
+            mode=self.control_mode
         )
 
     def applicable(self, s, t):
