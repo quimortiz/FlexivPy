@@ -968,6 +968,39 @@ class JointFloating():
         return False
 
 
+class JointFloatingPython():
+    def __init__(self, robot): 
+        self.kv = 1./4. * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+        self.robot = robot
+
+    def setup(self,s):
+        pass
+
+    def get_control(self,state,tic):
+
+        tau_g = self.robot.gravity(np.array(state.q))
+
+
+        # get gravity compensation
+        return  FlexivCmd(
+                    tau_ff = tau_g,
+                    kv=self.kv,
+                    tau_ff_with_gravity=True,
+        )
+
+
+    def applicable(self,state,tic):
+        """
+        """
+        return True
+
+    def goal_reached(self,state, tic):
+        """
+        """
+        return False
+
+
+
 class Stay:
     def __init__(self):
         self.kp = 1 * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
