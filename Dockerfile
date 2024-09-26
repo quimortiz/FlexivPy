@@ -112,6 +112,10 @@ RUN echo export "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib" >> ~/.b
 
 RUN pip install pyrealsense2 pygame
 RUN apt-get update && apt-get install -y -qq --no-install-recommends libusb-1.0-0-dev
+
+RUN conda install -n flexivpy -c conda-forge jupyter ipykernel
+RUN conda run -n flexivpy python -m ipykernel install --name "flexivpy" --display-name "Python (flexivpy)"
+
 RUN echo "conda activate flexivpy" >> ~/.bashrc
 # Env vars for the nvidia-container-runtime
 ENV NVIDIA_VISIBLE_DEVICES all

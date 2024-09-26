@@ -5,7 +5,7 @@
     "workspaceFolder": "/home/FlexivPy",
     "service": "flexivpy",
     "remoteUser": "root", 
-    "postCreateCommand": "cd /home/FlexivPy && conda run -n flexivpy /bin/bash -c python -m pip install -e .",
+    "postCreateCommand": "cd /home/FlexivPy && pip install -e .",
     "customizations": {
       "vscode": {
         "extensions": [
