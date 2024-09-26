@@ -17,7 +17,8 @@ class DiffIKController:
                  ef_frame = 'link7',
                  kp = 0.5*np.diag([10, 10, 10, 10, 10, 10]), 
                  kv=  0.0*np.diag([2, 2, 2, 2, 2, 2,2]), 
-                 joint_kv = np.ones(7)*8,
+                 joint_kv = 1.5 * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0]),
+                 joint_kp = 2.0 * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0]),
                  k_reg = 0.5*np.diag([10, 10, 10, 10, 10, 10, 10]),
                  dq_max = 10, 
                  T_cmd = None,
@@ -34,6 +35,7 @@ class DiffIKController:
         self.T_cmd = T_cmd
         self.dt = dt
         self.joint_kv = joint_kv
+        self.joint_kp = joint_kp
         self.dq_max=dq_max
         self.max_error = max_error
         try:
@@ -75,16 +77,28 @@ class DiffIKController:
         if self.T_cmd is None:
             info = self.model.getInfo(np.array(s.q), np.array(s.dq))
             self.T_cmd = info['poses'][self.ef_frame]
+        self.q_des = np.array(s.q)
 
     def get_control(self, state, t):
         dq_des = self.__call__(np.array(state.q), np.array(state.dq), self.T_cmd)
-        return FlexivCmd(
-            q=state.q,
-            dq=dq_des,
-            kp=np.zeros(7),
-            kv=self.joint_kv,
-            mode=self.control_mode
-        )
+        self.q_des+=self.dt*dq_des
+        if self.control_mode ==3:
+            return FlexivCmd(
+                q=self.q_des,
+                dq=dq_des,
+                kp=np.zeros(7),
+                kv=self.joint_kv,
+                mode=self.control_mode
+            )
+        else:
+            return FlexivCmd(
+                q=self.q_des,
+                dq=dq_des,
+                kp=self.joint_kp,
+                kv=self.joint_kv,
+                mode=self.control_mode
+            )
+
 
     def applicable(self, s, t):
         return True
