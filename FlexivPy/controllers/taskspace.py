@@ -21,7 +21,9 @@ class DiffIKController:
                  k_reg = 0.5*np.diag([10, 10, 10, 10, 10, 10, 10]),
                  dq_max = 10, 
                  T_cmd = None,
-                 control_mode='velocity'):
+                 control_mode='velocity',
+                 max_error = .05, 
+                 ):
         # define solver
         self.model = model
         self.kp = kp
@@ -33,6 +35,7 @@ class DiffIKController:
         self.dt = dt
         self.joint_kv = joint_kv
         self.dq_max=dq_max
+        self.max_error = max_error
         try:
             self.control_mode = {'velocity':3, 'torque':2, 'position':1}[control_mode]
         except:
@@ -47,11 +50,15 @@ class DiffIKController:
         _t_current = _T_current[0:3,-1].reshape(3,1)
         _R_cmd = T_cmd[0:3,0:3]
         _t_cmd = T_cmd[0:3,-1].reshape(3,1)
+
+
         J = info['Js'][self.ef_frame]
         J_inv = np.linalg.inv(J.T@J+1e-5*np.eye(J.shape[1]))@J.T
         P = np.eye(J.shape[1]) - J_inv@J
         R_error = pin.log3(_R_cmd@_R_current.T).reshape(3,1)
         t_error = (_t_cmd - _t_current).reshape(3,1)
+        if np.linalg.norm(t_error) > self.max_error:
+            raise Exception('The goal pose is too far!')
         pose_error = np.vstack([t_error, R_error])
         if np.linalg.det(J@J.T) > 0.001:
             dq_des = (J_inv@(self.kp@pose_error)+P@self.k_reg@(self.q0-_q)-self.kv@_dq).squeeze()

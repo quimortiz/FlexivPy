@@ -1,5 +1,10 @@
 # FlexivPy
 
+# new:
+
+(base) quim@mango:~$ xhost +
+
+
 # Instructions Machines in Motion
 
 1 - Turn on the robot, connect the ethernet cabel, put the safety switch up, slider should on position with two arrows up.
