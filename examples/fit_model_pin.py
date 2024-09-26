@@ -19,14 +19,16 @@ from sys import argv
 import os
 from os.path import dirname, join, abspath
 import numpy as np
+from scipy.optimize import minimize
 
 
-with open('array_slow_v2.pkl', 'rb') as f:
+with open('array_slow_v3.pkl', 'rb') as f:
     data  = pickle.load(f)
 
 
-urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/modified_robot.urdf"
-meshes_dir = "/home/quim/code/FlexivPy/FlexivPy/assets/meshes/"
+# urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/modified_robot.urdf"
+urdf = "/home/quim/code/alex/tamp_mpc/FlexivPy/FlexivPy/assets/flexiv_rizon10s_kinematics_w_gripper_mass.urdf"
+meshes_dir = "/home/quim/code/alex/tamp_mpc/FlexivPy/FlexivPy/assets/meshes/"
 
 robot = RobotWrapper.BuildFromURDF(urdf, meshes_dir)
 
@@ -35,8 +37,9 @@ d = data[0]
 
 tau_g = robot.gravity(np.array(d.q))
 x0 = np.array( [i.mass for i in robot.model.inertias])
+# print("x0 is ", x0)
 
-reg_weight = .001
+reg_weight = .05
 
 def error(x):
     for i in range(8):
@@ -83,7 +86,6 @@ def error_with_cm(x):
 
     return error
 
-from scipy.optimize import minimize
 
 x0 = np.zeros(8 + 8*3)
 for i in range(8):
@@ -117,15 +119,27 @@ root = tree.getroot()
 
 
 
-D ={ "base_link" : 0,
-    "link1": 1,
-    "link2" : 2 , 
-    "link3": 3,
-    "link4": 4,
-    "link5": 5,
-    "link6": 6,
-    "link7": 7}
+# D ={ "base_link" : 0,
+#     "link1": 1,
+#     "link2" : 2 , 
+#     "link3": 3,
+#     "link4": 4,
+#     "link5": 5,
+#     "link6": 6,
+#     "link7": 7
+#     # "flange": 8,
+#     }
 
+D ={ "rizon_base_link" : 0,
+    "rizon_link1": 1,
+    "rizon_link2" : 2 , 
+    "rizon_link3": 3,
+    "rizon_link4": 4,
+    "rizon_link5": 5,
+    "rizon_link6": 6,
+    "rizon_link7": 7
+    # "flange": 8,
+    }
 
 xsol = min_res.x
 
@@ -137,8 +151,11 @@ for link in root.findall('link'):
         # Modify the mass
         mass_element = inertial.find('mass')
         if mass_element is not None:
+            if link.get('name') == "flange":
+                continue
             mass_element.set('value',
                              str(xsol[D[link.get('name')]]))
+            print("setting mass of ", link.get('name'), " to ", xsol[D[link.get('name')]])
         # Modify the inertia's origin (xyz)
         origin_element = inertial.find('origin')
         if origin_element is not None:

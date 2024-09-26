@@ -9,6 +9,10 @@ import pinocchio as pin
 import easy_controllers
 import pinocchio as pin
 
+import pinocchio as pin
+from pinocchio.robot_wrapper import RobotWrapper
+from pinocchio.visualize import MeshcatVisualizer
+
 
 
 
@@ -18,7 +22,7 @@ import pinocchio as pin
 #
 # import pdb; pdb.set_trace()
 
-robot = robot_client.Flexiv_client( render=False, create_sim_server=False)
+robot = robot_client.Flexiv_client()
 
 # controller = easy_controllers.GoJointConfigurationSlow (
 #                  qgoal = np.array([ 0.000, -0.698, 0.000, 1.371, -0.000, 0.698, -0.000 ]) , 
@@ -34,12 +38,24 @@ robot = robot_client.Flexiv_client( render=False, create_sim_server=False)
 #         max_extra_time_rel = .2)
 
 
-controller = easy_controllers.JointFloating()
+
+# urdf = "/home/quim/code/alex/tamp_mpc/FlexivPy/FlexivPy/assets/flexiv_rizon10s_kinematics_w_gripper_mass.urdf"
+# k
+urdf = "modified_robot.urdf"
+meshes_dir = "/home/quim/code/alex/tamp_mpc/FlexivPy/FlexivPy/assets/meshes/"
+
+_robot = RobotWrapper.BuildFromURDF(urdf, meshes_dir)
+
+controller  = easy_controllers.JointFloatingPython(_robot)
+
+# controller = easy_controllers.JointFloating()
+#
+
+
 
 status = easy_controllers.run_controller(robot, controller,  dt=.005 , max_time = 120)
 print("status", status)
 
-adfa
 #
 # import sys
 # sys.exit()
@@ -62,7 +78,7 @@ adfa
 states = []
 try:
     dt = 0.01
-    max_time = 3 * 60
+    max_time = 2 * 60
     s = robot.get_robot_state()
     controller.setup(s)
     tic_start = time.time()
