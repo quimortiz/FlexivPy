@@ -129,11 +129,11 @@ class FlexivSim:
     
     def get_gripper_state(self):
         if self.data.ctrl[-1] == 255:
-            if self.data.joint('2f_85_left_driver_joint').qpos > 0.75 and self.data.joint('2f_85_right_driver_joint').qpos > 0.75 and \
-                self.data.joint('2f_85_left_driver_joint').qvel < 0.5 and self.data.joint('2f_85_right_driver_joint').qvel < 0.5:
+            if self.data.joint('2f_85_left_driver_joint_0').qpos > 0.75 and self.data.joint('2f_85_right_driver_joint_0').qpos > 0.75 and \
+                self.data.joint('2f_85_left_driver_joint_0').qvel < 0.5 and self.data.joint('2f_85_right_driver_joint_0').qvel < 0.5:
                     return 'closed'
-            elif self.data.joint('2f_85_left_driver_joint').qpos > 0.1 and self.data.joint('2f_85_right_driver_joint').qpos > 0.1 and \
-                self.data.joint('2f_85_left_driver_joint').qvel < 0.5 and self.data.joint('2f_85_right_driver_joint').qvel < 0.5:
+            elif self.data.joint('2f_85_left_driver_joint_0').qpos > 0.1 and self.data.joint('2f_85_right_driver_joint_0').qpos > 0.1 and \
+                self.data.joint('2f_85_left_driver_joint_0').qvel < 0.5 and self.data.joint('2f_85_right_driver_joint_0').qvel < 0.5:
                 return 'holding'
 
             else:
