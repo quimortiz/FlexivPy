@@ -5,6 +5,40 @@
 (base) quim@mango:~$ xhost +
 
 
+# Instructions for use without dev containers and vscode
+
+
+```
+docker build -t my_project_image .
+docker run -it -v (pwd):/home/FlexivPy  my_project_image
+```
+Modify the second command as needed. just check the dev containers file!
+
+Install nvim
+
+```
+bash /home/FlexivPy/install_nvim.sh 
+source ~/.bashrc 
+```
+
+using devcontainers cli
+
+```
+devcontainer up --workspace-folder .
+```
+
+then check the container 
+
+```
+docker ps                                                                                                                                 (base) 
+```
+and attach to it
+
+```
+docker exec -it 9ab86f8990400ce7c944024c3a4d9048c3ada921848c996b26e342ced5f73912 bash
+```
+
+
 # Instructions Machines in Motion
 
 1 - Turn on the robot, connect the ethernet cabel, put the safety switch up, slider should on position with two arrows up.

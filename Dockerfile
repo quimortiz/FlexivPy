@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y -qq --no-install-recommends \
     libglm-dev \
     wget \
     ninja-build \
+    openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Miniconda
@@ -121,4 +122,5 @@ RUN echo "conda activate flexivpy" >> ~/.bashrc
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES graphics,utility,compute
 
-ENTRYPOINT [ "/bin/bash", "-l", "-c" ]
+# ENTRYPOINT [ "/bin/bash", "-l", "-c" ]
+CMD [ "/bin/bash" ]
