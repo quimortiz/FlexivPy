@@ -1,9 +1,9 @@
+#include <Eigen/Core>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <vector>
-#include <sstream>
-#include <iomanip>
-#include <chrono>
-
 
 #include "utils.hpp"
 #include <iostream>
@@ -76,16 +76,12 @@ std::string get_current_timestamp() {
 
 #include <mutex>
 
-
-
-
 void print_vector(const std::vector<double> &vec) {
   for (auto &v : vec) {
     std::cout << v << " ";
   }
   std::cout << std::endl;
 }
-
 
 std::optional<FlexivMsg::FlexivCmd>
 read_last_cmd(dds::sub::DataReader<FlexivMsg::FlexivCmd> &reader) {
@@ -125,3 +121,12 @@ read_last_cmd(dds::sub::DataReader<FlexivMsg::FlexivCmd> &reader) {
   }
 }
 
+Eigen::VectorXd
+create_vector_from_list(const std::initializer_list<double> &values) {
+  Eigen::VectorXd vec(values.size());
+  int index = 0;
+  for (const auto &value : values) {
+    vec(index++) = value;
+  }
+  return vec;
+}

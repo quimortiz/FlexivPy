@@ -55,42 +55,46 @@
       <geom name="ring-1" pos="0 0 -0.0025" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="v_ring1"/>
       <geom name="hull-1" type="mesh" rgba="1 1 1 1" mesh="c_link1"/>
       <body name="link2" pos="0 0.0675 0.24">
-        <inertial pos="0 0.03 0.11" quat="0.985806 0.167886 0 0" mass="6.2" diaginertia="0.1 0.0870156 0.0229844"/>
+        <inertial pos="0 0.03 0.11" quat="0.985806 0.167886 0 0" mass="6.358" diaginertia="0.1 0.0870156 0.0229844"/>
         <joint name="joint2" pos="0 0 0" axis="0 1 0" limited="true" range="-2.6704 2.6704"/>
         <geom name="shell-2" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.4 0.4 0.4 1" mesh="v_link2"/>
         <geom name="ring-2" pos="0 -0.0025 0" quat="0.707107 0.707107 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="v_ring2"/>
         <geom name="hull-2" type="mesh" rgba="1 1 1 1" mesh="c_link2"/>
         <body name="link3" pos="0 0.0625 0.2275">
-          <inertial pos="0 -0.03 0.17" quat="0.980785 -0.19509 0 0" mass="4.6" diaginertia="0.0266667 0.0266667 0.0266667"/>
+          <inertial pos="0 -0.03 0.17" quat="0.980785 -0.19509 0 0" mass="5.089" diaginertia="0.0266667 0.0266667 0.0266667"/>
           <joint name="joint3" pos="0 0 0" axis="0 0 1" limited="true" range="-2.7925 2.7925"/>
           <geom name="shell-3" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.4 0.4 0.4 1" mesh="v_link3"/>
           <geom name="ring-3" pos="0 0 -0.0025" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="v_ring3"/>
           <geom name="hull-3" type="mesh" rgba="1 1 1 1" mesh="c_link3"/>
           <body name="link4" pos="0 -0.0625 0.2225" quat="0 0 0 -1">
-            <inertial pos="0 0.05 0.1" mass="3" diaginertia="0.03 0.03 0.01"/>
+            <inertial pos="0 0.05 0.1" mass="3.267" diaginertia="0.03 0.03 0.01"/>
             <joint name="joint4" pos="0 0 0" axis="0 1 0" limited="true" range="-2.7053 2.7053"/>
             <geom name="shell-4" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.4 0.4 0.4 1" mesh="v_link4"/>
             <geom name="ring-4" pos="0 -0.0025 0" quat="0.707107 0.707107 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="v_ring4"/>
             <geom name="hull-4" type="mesh" rgba="1 1 1 1" mesh="c_link4"/>
             <body name="link5" pos="0 0.0575 0.205" quat="0 0 0 -1">
-              <inertial pos="0 0.01 0.13" mass="2.4" diaginertia="0.01 0.01 0.001"/>
+              <inertial pos="0 0.01 0.13" mass="2.498" diaginertia="0.01 0.01 0.001"/>
               <joint name="joint5" pos="0 0 0" axis="0 0 1" limited="true" range="-2.9671 2.9671"/>
               <geom name="shell-5" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.4 0.4 0.4 1" mesh="v_link5"/>
               <geom name="ring-5" pos="0 0 -0.0025" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="v_ring5"/>
               <geom name="hull-5" type="mesh" rgba="1 1 1 1" mesh="c_link5"/>
               <body name="link6" pos="0 0.03 0.19">
-                <inertial pos="0.02 0.06 0.07" mass="2.3" diaginertia="0.01 0.01 0.001"/>
+                <inertial pos="0.02 0.06 0.07" mass="2.340" diaginertia="0.01 0.01 0.001"/>
                 <joint name="joint6" pos="0 0 0" axis="0 1 0" limited="true" range="-1.3963 4.5379"/>
                 <geom name="shell-6" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.4 0.4 0.4 1" mesh="v_link6"/>
                 <geom name="ring-6" pos="0 -0.0025 0" quat="0.707107 0.707107 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="v_ring6"/>
                 <geom name="hull-6" type="mesh" rgba="1 1 1 1" mesh="c_link6"/>
                 <body name="link7" pos="-0.015 0.073 0.11" quat="0.707107 0 -0.707107 0">
                   <!--todo: i changed the diag intertia to .01, instead of .001-->
-                  <inertial pos="0 0 0.05" mass="1.5" diaginertia="0.01 0.01 0.01"/>
+                  <inertial pos="0 0 0.05" mass="1.568" diaginertia="0.01 0.01 0.01"/>
                   <joint name="joint7" pos="0 0 0" axis="0 0 1" limited="true" range="-2.9671 2.9671"/>
                   <geom name="shell-7" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.4 0.4 0.4 1" mesh="v_link7"/>
                   <geom name="ring-7" pos="0 0 -0.0025" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="v_ring7"/>
                   <geom name="hull-7" type="mesh" rgba="1 1 1 1" mesh="c_link7"/>
+
+                  <camera name="camera_link7" pos=".1 0 0" quat="0. 0.7 0.7 0" />
+                  <!--YXZ 0 180 90-->
+                  <!--https://www.andre-gaschler.com/rotationconverter/-->
                 </body>
               </body>
             </body>
@@ -100,7 +104,7 @@
     </body>
 
     <!--lets add a cube-->
-    <body name="cube_small" pos="0.5 0.0 0.05">
+    <body name="cube_small" pos="0.8 0.1 0.05">
       <freejoint name="cube_small_j"/>
       <geom type="box" mass="0.01" pos="0 0 0" rgba="1 .1 .1 1" size="0.05 0.05 0.05"/>
       <!-- <geom name="geo-marker" pos="0 0 0.05" size="0.1 0.1 0.0005" type="box" material="marker-mat"/> -->

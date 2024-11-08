@@ -12,6 +12,10 @@
   -->
 <robot name="rizon10s">
 
+  <disable_collisions link1="wall" link2="table"/>
+  <disable_collisions link1="wall" link2="base_link"/>
+  <disable_collisions link1="wall" link2="link1"/>
+
   <disable_collisions link1="table" link2="base_link"/>
   <disable_collisions link1="table" link2="link1"/>
   <disable_collisions link1="table" link2="link2"/>
@@ -27,9 +31,6 @@
   <disable_collisions link1="link1" link2="link3"/>
   <disable_collisions link1="link1" link2="link4"/>
 
-
-
-
   <disable_collisions link1="link2" link2="link3"/>
   <disable_collisions link1="link2" link2="link4"/>
 
@@ -41,11 +42,5 @@
 
   <disable_collisions link1="link5" link2="link6"/>
   <disable_collisions link1="link6" link2="link7"/>
-
-
-
-
-
-
 
 </robot>

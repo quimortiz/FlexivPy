@@ -13,16 +13,10 @@ def view_image(image):
     cv2.destroyWindow("tmp")
 
 
-
 q0 = np.array([0, -0.75, 0, 1.5, 0, 0.75, 0])
-robot_model = FlexivModel(
-    render=False,
-    q0=q0
-)
+robot_model = FlexivModel(render=False, q0=q0)
 
-robot = sim_robot.FlexivSim(
-    render=True, q0=q0, pin_model=robot_model.robot
-)
+robot = sim_robot.FlexivSim(render=True, q0=q0, pin_model=robot_model.robot)
 
 
 renderer = mujoco.Renderer(robot.model, 480, 640)

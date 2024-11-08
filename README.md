@@ -1,7 +1,57 @@
 # FlexivPy
 
+# Instructions Machines in Motion
 
-# TODO: 
+1 - Turn on the robot, connect the ethernet cabel, put the safety switch up, slider should on position with two arrows up.
+
+2 - Check that we can talk to the robot.
+
+```
+ping 192.168.2.100
+```
+
+3 - Compile the robot server.
+From the root of the FlexivPy repository:
+
+```
+cd FlexivPy/cpp
+mkdir && cd build
+cmake .. -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
+make
+sudo robot_server --path ../../assets/
+```
+
+There are a lot of command line options!
+If the robot is using the Flexiv gripper add `-g`. Check them all with:
+
+```
+sudo ./robot_server --help
+```
+
+
+Do not deactivate safety checks without reading the c++ code before and asking people from the lab.
+
+
+
+4 - Run the hello world example from Python in another terminal.
+
+```
+PYTHONPATH=. python examples/hello_world.py --mode=real
+```
+
+Now you can run your code!
+
+Before running on the real robot, try out the synchronous mujoco simulation and the asynchronous mujoco simulation.
+
+Run for example:
+
+```
+PYTHONPATH=. python examples/hello_world.py --mode=sim
+PYTHONPATH=. python examples/hello_world.py --mode=sim_async
+```
+
+
+
 
 
 # Experiments:
@@ -16,7 +66,7 @@ X More security checks.
 - Reaching task using Croccodyll
 X Option to do grav. comp. with MUJOCO.
 X Rerun integration
-X Camera simulation 
+X Camera simulation
 X IK controller
 X Smooth Polynomials
 X Run controller by controller interface
@@ -43,8 +93,8 @@ We need Cyclone DDS with Python Bindings
 git clone https://github.com/eclipse-cyclonedds/cyclonedds
 cd cyclonedds && mkdir build install && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX
-cmake --build . --config RelWithDebInfo --target install
-cd ../..
+cmake --build . --config Release --target install
+cd ..
 export CYCLONEDDS_HOME=$CONDA_PREFIX
 pip3 install git+https://github.com/eclipse-cyclonedds/cyclonedds-python
 ```
@@ -70,7 +120,7 @@ cd ../..
 
 Install Flexiv Sdk
 
-Follow the instructions in: 
+Follow the instructions in:
 
 
 https://github.com/flexivrobotics/flexiv_rdk
@@ -90,11 +140,10 @@ cd ../..
 
 # Acknowledgement
 
-This repository is inspired by: 
+This repository is inspired by:
 
 https://github.com/Rooholla-KhorramBakht/go2Py
 
 https://github.com/Rooholla-KhorramBakht/FR3Py
 
 https://github.com/machines-in-motion/dynamic_graph_head
-

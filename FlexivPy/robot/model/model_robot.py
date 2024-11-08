@@ -2,12 +2,9 @@
 
 import os
 
-import pinocchio as pin
 from pinocchio.robot_wrapper import RobotWrapper
 from pinocchio.visualize import MeshcatVisualizer
-from sys import argv
 import os
-from os.path import dirname, join, abspath
 import numpy as np
 
 
@@ -15,7 +12,6 @@ ASSETS_PATH = "FlexivPy/assets/"
 
 
 class FlexivModel:
-
     def __init__(self, render=False, urdf=None, meshes_dir=None, q0=None):
         """ """
         self.urdf = urdf

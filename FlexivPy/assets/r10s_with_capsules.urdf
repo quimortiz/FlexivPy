@@ -327,13 +327,13 @@
   <joint name="table_j" type="fixed">
     <parent link="base_link"/>
     <child link="table"/>
- <origin rpy="0. 0 0." xyz="0 0 -0.11"/> 
+ <origin rpy="0. 0 0." xyz="0 0 -0.11"/>
   </joint>
 
   <joint name="gripper_j" type="fixed">
     <parent link="flange"/>
     <child link="gripper"/>
-    <origin rpy="0. 0 0." xyz="0 0 0"/> 
+    <origin rpy="0. 0 0." xyz="0 0 0"/>
   </joint>
 
 
@@ -360,7 +360,7 @@
 
 
 <visual>
-      <origin rpy="0. 0 0." xyz="0.08 0 0."/> 
+      <origin rpy="0. 0 0." xyz="0.08 0 0."/>
      <geometry>
         <sphere radius="0.02"/>
       </geometry>
@@ -372,7 +372,7 @@
 
 
 <visual>
-      <origin rpy="0. 0 0." xyz="0.0 0 0.08"/> 
+      <origin rpy="0. 0 0." xyz="0.0 0 0.08"/>
      <geometry>
         <sphere radius="0.02"/>
       </geometry>
@@ -401,7 +401,7 @@
 
 
 <collision>
-      <origin rpy="0. 0 0." xyz="0.08 0 0."/> 
+      <origin rpy="0. 0 0." xyz="0.08 0 0."/>
      <geometry>
         <sphere radius="0.02"/>
       </geometry>
@@ -413,7 +413,7 @@
 
 
 <collision>
-      <origin rpy="0. 0 0." xyz="0.0 0 0.14"/> 
+      <origin rpy="0. 0 0." xyz="0.0 0 0.14"/>
      <geometry>
         <sphere radius="0.02"/>
       </geometry>
@@ -431,7 +431,7 @@
   <joint name="gripper_c_j" type="fixed">
     <parent link="gripper"/>
     <child link="gripper_c"/>
-    <origin rpy="0. 0 0." xyz="0 0 .10"/> 
+    <origin rpy="0. 0 0." xyz="0 0 .10"/>
   </joint>
 
 

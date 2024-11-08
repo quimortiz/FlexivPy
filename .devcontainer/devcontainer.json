@@ -1,0 +1,18 @@
+// https://containers.dev/implementors/json_reference/
+{
+    "name": "FlexivPy", 
+    "dockerComposeFile": "docker-compose.yaml",
+    "workspaceFolder": "/home/FlexivPy",
+    "service": "flexivpy",
+    "remoteUser": "root", 
+    "postCreateCommand": "cd /home/FlexivPy && pip install -e .",
+    "customizations": {
+      "vscode": {
+        "extensions": [
+          "dbaeumer.vscode-eslint", // Existing ESLint extension
+          "ms-python.python", // Python extension by Microsoft
+          "ms-toolsai.jupyter" // Jupyter extension by Microsoft
+        ]
+      }
+    }
+  }
