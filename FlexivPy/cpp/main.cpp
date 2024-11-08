@@ -829,7 +829,7 @@ int main(int argc, char *argv[]) {
       .store_into(robot_config_file);
 
   program.add_argument("-rcmg", "--read_cmd_if_moving_gripper")
-      .help("Overwrite command if moving gripper")
+      .help("Read user command if moving gripper")
       .default_value(read_cmd_if_moving_gripper)
       .implicit_value(true)
       .store_into(read_cmd_if_moving_gripper);
