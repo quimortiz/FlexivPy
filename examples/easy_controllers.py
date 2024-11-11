@@ -631,6 +631,97 @@ class InverseKinematicsController:
         print("error is", err)
         return np.linalg.norm(err) < self.goal_error
 
+
+class InverseKinematicsControllerVicon:
+    def __init__(self, robot, oMdes, frame_id, 
+                 approx_dt=0.01,kvv=2.,
+                 kp_scale=1.0, kv_scale=1.0,
+                 goal_error=1e-2, max_v=0.3,
+                 w_weight=.25,
+                 vicon=None,
+                 Rdes = None) :
+        self.object_name = "box_yellow"
+        self.vicon = vicon
+        self.approx_dt = approx_dt
+        self.goal_error = goal_error
+        self.robot = robot
+        self.frame_id = frame_id
+        self.max_v = max_v
+        self.w_weight = w_weight
+        self.joint_controller = None
+        self.kp = kp_scale * np.array([3000.0, 3000.0, 800.0, 800.0, 400.0, 400.0, 400.0])
+        self.kv = kv_scale * np.array([80.0, 80.0, 40.0, 40.0, 20.0, 20.0, 20.0])
+        self.kvv = kvv
+        assert vicon is not None
+        state = vicon.get_state()
+        print(state)
+        self.Rdes = Rdes
+
+        self.previous_pose = state.get(self.object_name,None)
+        if self.previous_pose is None:
+            raise ValueError("no box_black in state -- cannot initialize controller")
+        
+        self.q_disappear = None
+        self.is_object_visible = True
+        self.is_object_visible_last = True
+            
+
+
+    def setup(self, s):
+        pass
+
+    def get_control(self, state, tic):
+        # get the object position with vicon
+        self.is_object_visible_last = self.is_object_visible
+
+        env_state = self.vicon.get_state()
+        self.obj_pose = env_state.get(self.object_name,None)
+
+        if self.obj_pose is not None:
+            self.is_object_visible = True
+        else: 
+            self.is_object_visible = False
+
+        if self.is_object_visible == False:
+            if self.is_object_visible_last:
+                self.q_disappear = state.q
+            return  FlexivCmd(q=self.q_disappear,  kp=self.kp, kv=self.kv)
+
+            
+        oMdes = pin.SE3(self.Rdes,self.obj_pose.translation)
+        oMdes.translation[2] += 0.3 # add a small offset
+
+
+        q = np.array(state.q)
+        self.robot.framePlacement(q, self.frame_id, update_kinematics=True)
+        iMd = self.robot.data.oMf[self.frame_id].actInv(oMdes)
+        err = pin.log(iMd).vector  # in joint frame
+
+        J = pin.computeFrameJacobian(self.robot.model, self.robot.data, q, self.frame_id)  # in joint frame
+        J = -np.dot(pin.Jlog6(iMd.inverse()), J)
+        damp = 1e-6
+        v = self.kvv *  -J.T.dot(solve(J.dot(J.T) + damp * np.eye(6), err))
+
+
+        if np.linalg.norm(v) > self.max_v:
+            v /= np.linalg.norm(v)
+            v *= self.max_v
+
+        q_des = q + self.approx_dt * v
+        cmd = FlexivCmd(q=q_des, dq=v, kp=self.kp, kv=self.kv)
+        return cmd
+
+
+
+
+    def applicable(self, state, tic):
+        return True
+
+    def goal_reached(self, state, tic):
+        False
+       
+
+
 class JointFloatingHistory:
     # TODO: not working yet, maybe remove?
     def __init__(self, history=100, kv_scale=2., kp_scale=0.2):

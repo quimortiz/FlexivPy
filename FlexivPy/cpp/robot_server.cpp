@@ -501,7 +501,7 @@ private:
   // numerical values
 
   int control_mode;
-  std::string base_path = "FlexivPy/FlexivPy/assets/";
+  std::string base_path;
 
   double max_endeff_v = 1.;
 
@@ -965,6 +965,11 @@ int main(int argc, char *argv[]) {
       .implicit_value(true)
       .store_into(profile);
 
+  program.add_argument("--path")
+      .help("Base path to find models")
+      .store_into(base_path)
+      .required();
+
   program.add_argument("-mt", "--max_time")
       .help("Max time in seconds")
       .default_value(max_time_s)
@@ -974,12 +979,6 @@ int main(int argc, char *argv[]) {
       .help("Robot config file")
       .default_value(robot_config_file)
       .store_into(robot_config_file);
-
-  program.add_argument("-rcmg", "--read_cmd_if_moving_gripper")
-      .help("Read user command if moving gripper")
-      .default_value(read_cmd_if_moving_gripper)
-      .implicit_value(true)
-      .store_into(read_cmd_if_moving_gripper);
 
   program.add_argument("-icmg", "--ignore_cmd_moving_gripper")
       .help("ignore robot command if moving gripper")
@@ -1001,10 +1000,6 @@ int main(int argc, char *argv[]) {
     std::cerr << err.what() << std::endl;
     std::cerr << program;
     return 1;
-  }
-
-  if (robot_config_file != "") {
-    throw_pretty("Robot config file not implemented");
   }
 
   std::cout << "=== [Subscriber] Create reader." << std::endl;
