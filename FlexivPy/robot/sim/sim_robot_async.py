@@ -238,9 +238,9 @@ if __name__ == "__main__":
     argp.add_argument("--urdf", type=str, default=None, help="urdf path")
     argp.add_argument("--meshes_dir", type=str, default=None, help="meshes directrory path")
     argp.add_argument("--joints", type=str, nargs='+', default=None, help="Names of the joints")
-
-
+    argp.add_argument("--objects", type=str, nargs='+', default=None, help="Names of the objects")
     argp.add_argument("--has_gripper", action="store_true", help="render the simulation")
+    argp.add_argument("--disturbances_path", type=str, default=None, help="disturbances yaml path")
 
 
 
@@ -259,11 +259,13 @@ if __name__ == "__main__":
         render=False,
         q0=config.get("q0", None),
         urdf=args.urdf,
-        meshes_dir=args.meshes_dir
+        meshes_dir=args.meshes_dir,
     )
 
-    robot_sim = sim_robot.FlexivSim(dt=dt, render=args.render, xml_path=args.xml_path, q0=q0, 
-                                    pin_model=robot_model.robot, render_images=args.render_images, joints=args.joints, has_gripper=args.has_gripper)
+    robot_sim = sim_robot.FlexivSim(dt=dt, render=args.render, xml_path=args.xml_path, q0=q0,
+                                    pin_model=robot_model.robot, render_images=args.render_images, 
+                                    joints=args.joints, has_gripper=args.has_gripper,
+                                    disturbances_path=args.disturbances_path, object_names=args.objects)
 
     sim = FlexivSim_dds_server( robot_sim, dt, max_time=100.0)
 

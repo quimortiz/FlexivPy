@@ -40,7 +40,8 @@ class FlexivSim:
         render_images=False,
         object_names = [],
         joints = None,
-        has_gripper=False
+        has_gripper=False,
+        disturbances_path = None
 
     ):
 
@@ -116,7 +117,11 @@ class FlexivSim:
         else:
             self.camera_renderer = None
 
-
+        if not disturbances_path is None:
+            self.disturbances = load_yaml_disturbances(disturbances_path)
+        else:
+            self.disturbances = []
+        
         print("robot sim is ready!")
 
 
@@ -129,11 +134,11 @@ class FlexivSim:
     
     def get_gripper_state(self):
         if self.data.ctrl[-1] == 255:
-            if self.data.joint('2f_85_left_driver_joint_0').qpos > 0.75 and self.data.joint('2f_85_right_driver_joint_0').qpos > 0.75 and \
-                self.data.joint('2f_85_left_driver_joint_0').qvel < 0.5 and self.data.joint('2f_85_right_driver_joint_0').qvel < 0.5:
+            if self.data.joint('robot_0_2f_85_left_driver_joint').qpos > 0.75 and self.data.joint('robot_0_2f_85_right_driver_joint').qpos > 0.75 and \
+                self.data.joint('robot_0_2f_85_left_driver_joint').qvel < 0.5 and self.data.joint('robot_0_2f_85_right_driver_joint').qvel < 0.5:
                     return 'closed'
-            elif self.data.joint('2f_85_left_driver_joint_0').qpos > 0.1 and self.data.joint('2f_85_right_driver_joint_0').qpos > 0.1 and \
-                self.data.joint('2f_85_left_driver_joint_0').qvel < 0.5 and self.data.joint('2f_85_right_driver_joint_0').qvel < 0.5:
+            elif self.data.joint('robot_0_2f_85_left_driver_joint').qpos > 0.1 and self.data.joint('robot_0_2f_85_right_driver_joint').qpos > 0.1 and \
+                self.data.joint('robot_0_2f_85_left_driver_joint').qvel < 0.5 and self.data.joint('robot_0_2f_85_right_driver_joint').qvel < 0.5:
                 return 'holding'
 
             else:
@@ -181,8 +186,11 @@ class FlexivSim:
             # view_image(self.last_camera_image)
             # time.sleep(0.0001)
 
-
-
+        if self.disturbances:
+            disturbance_time, object_name, placement, is_relative = self.disturbances[0]
+            if self.data.time >= disturbance_time:
+                self.update_object_placement(object_name, placement, is_relative) 
+                self.disturbances =  self.disturbances[1:]
 
     def set_u(self):
         cmd = self.cmd
@@ -234,12 +242,12 @@ class FlexivSim:
         return self.last_camera_image
         
     def get_env_state(self):
-        # 
-        D = {}
-        for obj in self.object_names:
-            # q = data.joint("cube_j").qpos
-            D[obj] = np.concatenate([self.data.get_body_xpos(obj), self.data.get_body_xquat(obj)])
-        return D
+        object_placement_dict = {}
+        for object_name in self.object_names:
+            object_trans = self.data.joint(object_name + "_joint").qpos[:3]
+            object_quat_pin = np.concatenate([self.data.joint(object_name + "_joint").qpos[4:], [self.data.joint(object_name + "_joint").qpos[3]]])
+            object_placement_dict[object_name] = np.concatenate([object_trans, object_quat_pin])
+        return object_placement_dict
 
 
     def is_ready(self):
@@ -251,3 +259,56 @@ class FlexivSim:
     def close(self):
         if self.render:
             self.viewer.close()
+
+    def update_object_placement(self, object_name: str, placement: pin.SE3, is_relative: bool):
+        """
+        Update the placement of an object in the environment.
+
+        Parameters
+        ----------
+        object_name : str
+            The name of the object whose placement is to be updated.
+        placement : pinocchio.SE3
+            The desired placement of the object.
+
+        Raises
+        ------
+        ValueError
+            If the object specified by object_name is not found in the simulator.
+        """
+        if is_relative:
+            object_trans = self.data.joint(object_name + "_joint").qpos[:3]
+            object_quat_pin = pin.Quaternion(np.concatenate([self.data.joint(object_name + "_joint").qpos[4:], [self.data.joint(object_name + "_joint").qpos[3]]]))
+            current_object_placement_pin = pin.SE3(object_quat_pin, object_trans )
+            new_object_placement_pin = current_object_placement_pin * placement
+        else:
+            new_object_placement_pin = placement
+
+        object_joint_data = self.data.joint(object_name + "_joint")
+
+        object_joint_data.qpos[:3] = new_object_placement_pin.translation
+
+        quat = pin.Quaternion(new_object_placement_pin.rotation).coeffs()
+        object_joint_data.qpos[3] = quat[3]
+        object_joint_data.qpos[4:] = quat[:3]
+
+        mujoco.mj_forward(self.model, self.data)
+
+def load_yaml_disturbances(disturbances_path: str):
+
+    with open(disturbances_path, 'r') as file:
+        disturbances_yaml = yaml.safe_load(file)
+
+    disturbances_yaml = disturbances_yaml.get('disturbances', [])
+    disturbances = []
+    for disturbance in disturbances_yaml:
+        object_name = disturbance.get('object_name')
+        time = disturbance.get('time')
+        translation = np.array(disturbance.get('translation'), dtype=float)
+        rotation = pin.utils.rpyToMatrix(np.array(disturbance.get('rotation'), dtype=float))
+        placement = pin.SE3(rotation, translation)
+        is_relative = disturbance.get('is_relative')
+
+        disturbances.append((time, object_name, placement, is_relative))
+
+    return disturbances
