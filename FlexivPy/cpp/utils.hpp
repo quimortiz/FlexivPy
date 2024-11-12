@@ -1,10 +1,11 @@
 #include "FlexivData.hpp"
 #include "dds/dds.hpp"
+#include <Eigen/src/Core/Matrix.h>
+#include <cmath>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
-#include <cmath>
 
 // Helper function to format the error message with file, line, and function
 // details
@@ -65,8 +66,8 @@ template <typename T> double inf_norm(const T &vec) {
   return norm;
 }
 
-
-template <typename T, typename U> double euclidean_distance(const T &vec1, const U &vec2) {
+template <typename T, typename U>
+double euclidean_distance(const T &vec1, const U &vec2) {
   double dist = 0;
   for (size_t i = 0; i < vec1.size(); i++) {
     dist += (vec1[i] - vec2[i]) * (vec1[i] - vec2[i]);
@@ -74,7 +75,8 @@ template <typename T, typename U> double euclidean_distance(const T &vec1, const
   return std::sqrt(dist);
 }
 
-template <typename T, typename U> double inf_distance(const T &vec1, const U &vec2) {
+template <typename T, typename U>
+double inf_distance(const T &vec1, const U &vec2) {
   double dist = 0;
   for (size_t i = 0; i < vec1.size(); i++) {
     dist = std::max(dist, std::abs(vec1[i] - vec2[i]));
@@ -82,6 +84,8 @@ template <typename T, typename U> double inf_distance(const T &vec1, const U &ve
   return dist;
 }
 
+Eigen::VectorXd
+create_vector_from_list(const std::initializer_list<double> &values);
 
 void print_vector(const std::vector<double> &vec);
 

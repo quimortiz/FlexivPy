@@ -1,32 +1,20 @@
-import FlexivPy.robot.sim.sim_robot as sim_robot
-import FlexivPy.robot.robot_client as robot_client
-import FlexivPy.robot.model.model_robot as model_robot
 import numpy as np
-import time
-import yaml
-import argparse
-import pinocchio as pin
-import easy_controllers
-import pinocchio as pin
 
 import pickle
 
 
-import pinocchio as pin
 from pinocchio.robot_wrapper import RobotWrapper
-from pinocchio.visualize import MeshcatVisualizer
-from sys import argv
-import os
-from os.path import dirname, join, abspath
 import numpy as np
+from scipy.optimize import minimize
 
 
-with open('array_slow_v2.pkl', 'rb') as f:
+with open('array_slow_v3.pkl', 'rb') as f:
     data  = pickle.load(f)
 
 
-urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/modified_robot.urdf"
-meshes_dir = "/home/quim/code/FlexivPy/FlexivPy/assets/meshes/"
+# urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/modified_robot.urdf"
+urdf = "/home/quim/code/alex/tamp_mpc/FlexivPy/FlexivPy/assets/flexiv_rizon10s_kinematics_w_gripper_mass.urdf"
+meshes_dir = "/home/quim/code/alex/tamp_mpc/FlexivPy/FlexivPy/assets/meshes/"
 
 robot = RobotWrapper.BuildFromURDF(urdf, meshes_dir)
 
@@ -35,8 +23,9 @@ d = data[0]
 
 tau_g = robot.gravity(np.array(d.q))
 x0 = np.array( [i.mass for i in robot.model.inertias])
+# print("x0 is ", x0)
 
-reg_weight = .001
+reg_weight = .05
 
 def error(x):
     for i in range(8):
@@ -46,9 +35,9 @@ def error(x):
         tau_g = robot.gravity(np.array(d.q))
         tau_real = d.tau
         dif = tau_g - tau_real
-        error += np.dot(dif,dif)
+        error += np.dot(dif, dif)
     error /= len(data)
-    error += reg_weight * np.dot( x-x0, x-x0)
+    error += reg_weight * np.dot(x - x0, x - x0)
 
     return error
 
@@ -69,7 +58,7 @@ def error_with_cm(x):
 
     start_index = 8
     for i in range(8):
-        p = x[start_index + i * 3 : start_index + (i +1) * 3]
+        p = x[start_index + i * 3 : start_index + (i + 1) * 3]
         robot.model.inertias[i].lever = p
 
     error = 0
@@ -77,21 +66,20 @@ def error_with_cm(x):
         tau_g = robot.gravity(np.array(d.q))
         tau_real = d.tau
         dif = tau_g - tau_real
-        error += np.dot(dif,dif)
+        error += np.dot(dif, dif)
     error /= len(data)
-    error += reg_weight * np.dot( x-x0, x-x0)
+    error += reg_weight * np.dot(x - x0, x - x0)
 
     return error
 
-from scipy.optimize import minimize
 
-x0 = np.zeros(8 + 8*3)
+x0 = np.zeros(8 + 8 * 3)
 for i in range(8):
     x0[i] = robot.model.inertias[i].mass
 
-start_index  = 8
+start_index = 8
 for i in range(8):
-    x0[start_index + i * 3 : start_index + (i +1) * 3] =  robot.model.inertias[i].lever 
+    x0[start_index + i * 3 : start_index + (i + 1) * 3] = robot.model.inertias[i].lever
 
 print(error_with_cm(x0))
 min_res = minimize(error_with_cm, x0=x0, method="BFGS")
@@ -100,9 +88,9 @@ print(min_res)
 print(x0)
 
 error(min_res.x)
-print('difference is',  min_res.x - x0)
+print("difference is", min_res.x - x0)
 
-print('evaluating at optimum')
+print("evaluating at optimum")
 
 robot.model.saveToXML("/tmp/robot.xml", "flexiv")
 
@@ -110,46 +98,64 @@ robot.model.saveToXML("/tmp/robot.xml", "flexiv")
 import xml.etree.ElementTree as ET
 
 # Load the URDF file
-tree = ET.parse(urdf )
+tree = ET.parse(urdf)
 root = tree.getroot()
 
 
 
 
 
-D ={ "base_link" : 0,
-    "link1": 1,
-    "link2" : 2 , 
-    "link3": 3,
-    "link4": 4,
-    "link5": 5,
-    "link6": 6,
-    "link7": 7}
+# D ={ "base_link" : 0,
+#     "link1": 1,
+#     "link2" : 2 , 
+#     "link3": 3,
+#     "link4": 4,
+#     "link5": 5,
+#     "link6": 6,
+#     "link7": 7
+#     # "flange": 8,
+#     }
 
+D ={ "rizon_base_link" : 0,
+    "rizon_link1": 1,
+    "rizon_link2" : 2 , 
+    "rizon_link3": 3,
+    "rizon_link4": 4,
+    "rizon_link5": 5,
+    "rizon_link6": 6,
+    "rizon_link7": 7
+    # "flange": 8,
+    }
 
 xsol = min_res.x
 
 # Loop through each link and find the inertial elements
-for link in root.findall('link'):
-    inertial = link.find('inertial')
-    
+for link in root.findall("link"):
+    inertial = link.find("inertial")
+
     if inertial is not None:
         # Modify the mass
-        mass_element = inertial.find('mass')
+        mass_element = inertial.find("mass")
         if mass_element is not None:
+            if link.get('name') == "flange":
+                continue
             mass_element.set('value',
                              str(xsol[D[link.get('name')]]))
+            print("setting mass of ", link.get('name'), " to ", xsol[D[link.get('name')]])
         # Modify the inertia's origin (xyz)
-        origin_element = inertial.find('origin')
+        origin_element = inertial.find("origin")
         if origin_element is not None:
-            start_index  = 8
-            p = xsol[start_index + D[link.get('name')]*3 : start_index + (D[link.get('name')]  +1 ) * 3 ]
-            print('p is', p)
-            pstr = ' '.join([str(i) for i in p])
-            origin_element.set('xyz', pstr)  # Set new xyz value
+            start_index = 8
+            p = xsol[
+                start_index
+                + D[link.get("name")] * 3 : start_index
+                + (D[link.get("name")] + 1) * 3
+            ]
+            print("p is", p)
+            pstr = " ".join([str(i) for i in p])
+            origin_element.set("xyz", pstr)  # Set new xyz value
 
-tree.write('modified_robot.urdf')
-
+tree.write("modified_robot.urdf")
 
 
 # # robot.model.inertias[2].mass
@@ -174,6 +180,3 @@ tree.write('modified_robot.urdf')
 # print(tau_g2)
 
 # import pdb; pdb.set_trace()
-
-
-

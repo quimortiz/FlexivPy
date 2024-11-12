@@ -78,9 +78,7 @@ int main() {
   std::cout << "Diference" << std::endl;
   std::cout << g - data.g << std::endl;
 
-  Eigen::VectorXd relative_difference = (g - data.g)
-                                            .cwiseAbs()
-                                            .cwiseQuotient(
-                                                g.cwiseAbs());
+  Eigen::VectorXd relative_difference =
+      (g - data.g).cwiseAbs().cwiseQuotient(g.cwiseAbs());
   std::cout << relative_difference << std::endl;
 }
