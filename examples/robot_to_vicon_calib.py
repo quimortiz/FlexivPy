@@ -11,6 +11,7 @@ import os
 import pickle
 from SimpleHandEye.solvers import OpenCVSolver
 import motioncapture
+import sys
 
 
 from vicon_env_state import ViconEnvState
@@ -98,9 +99,11 @@ if generate_trajectory:
     with open('/tmp/data.yaml', 'w') as f:
         yaml.dump(qs, f)
 
+    sys.exit(0)
+
 
 else: 
-    file = "data/data_robot_vicon_calib.yaml"
+    file = "data/data_robot_vicon_calib_v2.yaml"
     # replay the trajectory
 
     env_state = ViconEnvState(D_ref_frame_wrt_vicon_frame = {})
@@ -120,7 +123,7 @@ else:
         qs = yaml.safe_load(f)
 
 
-    num_points = 10
+    num_points = 20
     one_every = len(qs) // num_points
 
     waypoints = qs[::one_every]
@@ -137,7 +140,13 @@ else:
             dt=0.01,
             max_time=30,
         )
-        # time.sleep(1)
+
+        status = easy_controllers.run_controller(
+            robot,
+            easy_controllers.Stay(),
+            dt=0.01,
+            max_time=2.,
+        )
 
         s = robot.get_robot_state()
         T = pin_model.framePlacement(np.array(s.q), frame_id_flange, update_kinematics=True)

@@ -34,7 +34,7 @@ T_black = pin.SE3(R_black, p_black)
 
 p_yellow = np.array([-.055, 0, .0])
 # p_yellow = np.array([.055, 0, .0])
-p_yellow = np.array([.0, 0, .0])
+# p_yellow = np.array([.0, 0, .0])
 R_yellow  = np.eye(3)
 T_yellow = pin.SE3(R_yellow, p_yellow)
 
@@ -53,12 +53,23 @@ Base_T_viconW = np.array( [[ 9.99952235e-01,  9.46723556e-03,  2.42897816e-03,  
 #  [-2.54676865e-03  8.56937452e-04  9.99996390e-01  7.51411479e-04]
 # [ 0.00000000e+00  0.00000000e+00  0.00000000e+00  1.00000000e+00]]
 
+# Base_T_viconW = np.array( [[ 9.99901417e-01,  1.34438268e-02,  4.05205743e-03,  2.89027280e-01],
+#  [-1.34392108e-02,  9.99909012e-01, -1.16426401e-03, -1.13614676e-02],
+#  [-4.06734091e-03 , 1.10969278e-03,  9.99991113e-01,  8.41028579e-04],
+#  [ 0.00000000e+00  ,0.00000000e+00,  0.00000000e+00,  1.00000000e+00]])
+
+
+Base_T_viconW = np.array( [[ 9.99840687e-01,  1.77210742e-02,  2.13643729e-03,  2.89607673e-01],
+ [-1.77168764e-02,  9.99841107e-01, -1.96799840e-03, -1.12452615e-02],
+ [-2.17097287e-03,  1.92983388e-03,  9.99995781e-01, -7.68970272e-04],
+ [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  1.00000000e+00]])
 
 
 
-# vicon_wrt_robot = pin.SE3(Base_T_viconW[:3,:3], Base_T_viconW[:3,3])
 
-vicon_wrt_robot = pin.SE3(np.eye(3), np.array([0.29, 0, 0]) )
+vicon_wrt_robot = pin.SE3(Base_T_viconW[:3,:3], Base_T_viconW[:3,3])
+
+# vicon_wrt_robot = pin.SE3(np.eye(3), np.array([0.29, 0, 0]) )
 
 # Base_T_viconW =  pin.SE3(np.eye(3), np.array([0.3, 0, 0]))
 
@@ -116,7 +127,7 @@ print(state['box_black'].rotation)
 
 z_offset = 0.3
 
-sys.exit(0)
+# sys.exit(0)
 # input("Press Enter to continue...")
 # state = env_state.get_state()
 # print(state)
@@ -195,7 +206,8 @@ controller = easy_controllers.InverseKinematicsControllerVicon(
      kp_scale=1.2 * kp_scale,
      kv_scale=1.2 * kv_scale,
      vicon = env_state, 
-    w_weight = .5,
+     kvv = 2*10.,
+    w_weight = 1.,
      Rdes = Rdes)
 
 
