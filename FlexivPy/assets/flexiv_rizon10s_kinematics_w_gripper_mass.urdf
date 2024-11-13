@@ -413,7 +413,7 @@
   <link name="table">
     <visual>
       <geometry>
-	<box  size="2 2 .2"/>
+	<box  size="2 2 .24"/>
       </geometry>
       <material name="custom">
         <color rgba="0.8 0.7 0.7 0.5"/>
@@ -423,7 +423,7 @@
 
     <collision>
       <geometry>
-	<box  size="2 2 .2"/>
+	<box  size="2 2 .24"/>
       </geometry>
       <material name="brown"/>
     </collision>

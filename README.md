@@ -18,8 +18,18 @@ cd FlexivPy/cpp
 mkdir && cd build
 cmake .. -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
 make
-sudo robot_server --path ../../assets/
 ```
+with gripper
+```
+sudo ./robot_server -g --path ../../assets/ -rcf ../config.yaml
+```
+withour gripper remove -g
+
+use 
+```
+sudo ./robot_server --help to see all flags
+```
+
 
 There are a lot of command line options!
 If the robot is using the Flexiv gripper add `-g`. Check them all with:

@@ -19,21 +19,6 @@ from vicon_env_state import ViconEnvState
 solver = OpenCVSolver()
 
 
-# lets store some positions first 
-
-
-p_black = np.array([-.05, 0, -.03])
-R_black = np.eye(3)
-
-T_black = pin.SE3(R_black, p_black)
-
-
-p_yellow = np.array([-.055, 0, .0])
-R_yellow  = np.eye(3)
-T_yellow = pin.SE3(R_yellow, p_yellow)
-
-D_ref_frame_wrt_vicon_frame = {"box_black":T_black, 
-                              "box_yellow": T_yellow }         
 
 
 
@@ -104,8 +89,6 @@ if generate_trajectory:
 
 else: 
     file = "data/data_robot_vicon_calib_v2.yaml"
-    # replay the trajectory
-
     env_state = ViconEnvState(D_ref_frame_wrt_vicon_frame = {})
     # go home
     qhome = np.array([0.0, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000])
@@ -134,7 +117,7 @@ else:
         status = easy_controllers.run_controller(
             robot,
             easy_controllers.GoJointConfiguration(
-                qdes=q, max_v=0.2, max_extra_time_rel=1.0,
+                qdes=q, max_v=0.3, max_extra_time_rel=1.0,
                   error_goal=5 * 1e-2,
             ),
             dt=0.01,
@@ -157,7 +140,8 @@ else:
 
 
         if status != easy_controllers.ControllerStatus.GOAL_REACHED:
-            print("warning: Error")
+            pass
+            # print("warning: Error")
             # break
         # 
     print("done")
@@ -175,22 +159,4 @@ else:
     print("X, ef_T_marker", X)
     print("Y, Base_T_viconW", Y)
 
-    # Y, Base_T_viconW
-    # [[ 9.99952235e-01  9.46723556e-03  2.42897816e-03  2.89813540e-01]
-    #  [-9.46543818e-03  9.99954920e-01 -7.50407225e-04 -1.23062361e-02]
-    #  [-2.43597295e-03  7.27380039e-04  9.99996768e-01  7.88964024e-04]
-    #  [ 0.00000000e+00  0.00000000e+00  0.00000000e+00  1.00000000e+00]]
-
-
-
-
-    # vicon gives the REF point
-    #
-    
-    #
-
-
-    # lets store them to a file.
-
-
-
+   

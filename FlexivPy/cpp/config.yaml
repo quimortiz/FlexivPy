@@ -15,4 +15,9 @@
 
 # Examples:
 # kImpedanceKp:  [3000.0, 3000.0, 800.0, 800.0, 200.0,  200.0,  200.0]
-# gripper_max_force: 10
+gripper_max_force: 5
+tau_min: [-200, -200, -80, -80, -30, -30, -30]
+tau_max: [200, 200, 80, 80, 30, 30, 30]
+p_ub_endeff: [ 1.2, 0.9, 0.9]
+p_lb_endeff: [-0.1, -0.9 , 0.03]
+

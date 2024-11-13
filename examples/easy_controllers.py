@@ -443,8 +443,6 @@ class GoJointConfiguration:
         q = np.array(state.q)
         t_i = min(tic / self.motion_time, 1.0)
         p, pq, _ = evaluate_polynomial(self.coefficients, t_i)
-        print("current position is", q)
-        print("current velocity is", state.dq)
         if np.linalg.norm(p - q) > self.error_running:
             print("distance to goal is too large", np.linalg.norm(p - q))
             return False
