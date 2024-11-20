@@ -655,7 +655,7 @@ private:
   double gripper_velocity = 0.1;
   double gripper_width_open = 0.09;
   double gripper_min_closing_force = 1;
-  double gripper_width_close = 0.03;
+  double gripper_width_close = 0.02;
   double delta_width = .001;
 
   std::vector<double> tau_min = {-100, -100, -80, -80, -30, -30, -30};
