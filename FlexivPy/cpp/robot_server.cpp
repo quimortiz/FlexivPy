@@ -396,6 +396,7 @@ struct RobotController
 
     if (t_cmd.g_cmd() == std::string("open"))
     {
+      gripper_closing = false;
       if (is_gripper_open())
       {
         gripper_opening = false;
@@ -412,6 +413,7 @@ struct RobotController
 
     else if (t_cmd.g_cmd() == std::string("close"))
     {
+      gripper_opening = false;
 
       if (is_gripper_closed())
       {
@@ -547,6 +549,16 @@ struct RobotController
       if (config["q_max"])
       {
         q_max = config["q_max"].as<std::vector<double>>();
+      }
+
+      if (config["dq_min"])
+      {
+        dq_min = config["dq_min"].as<std::vector<double>>();
+      }
+
+      if (config["dq_max"])
+      {
+        dq_max = config["dq_max"].as<std::vector<double>>();
       }
 
       if (config["gripper_max_force"])
