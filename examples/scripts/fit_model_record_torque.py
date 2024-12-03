@@ -1,13 +1,12 @@
-import FlexivPy.robot.interface as interface
+import FlexivPy.robot.robot_client as robot_client
 import easy_controllers
 
 
 slow_states = []
 
-robot = interface.Flexiv_client(render=False, create_sim_server=False)
+robot = robot_client.Flexiv_client()
 import pickle
-
-with open("array.pkl", "rb") as f:
+with open('traj_with_gripper.pkl', 'rb') as f:
     states = pickle.load(f)
 
 qs = [s.q for s in states]
