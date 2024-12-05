@@ -129,6 +129,10 @@ class RealSenseCamera:
         else:
             self.depth_sensor.set_option(rs.option.emitter_enabled, 0)
 
+
+
+        self.color_frame = None
+
         # Start the thread for grabbing frames
         self._stop_event = threading.Event()
         self._thread = threading.Thread(target=self._run_grab_frames)
@@ -169,6 +173,13 @@ class RealSenseCamera:
         self._thread.join()
         # Stop the pipeline
         self.pipeline.stop()
+
+    # def __del__(self):
+    #     """
+    #     this is a destructor
+    #     """
+    #     print("")
+    #     self.close()
 
     def grab_frames(self):
         """

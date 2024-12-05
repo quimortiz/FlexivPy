@@ -717,6 +717,9 @@ private:
   SyncData<FlexivMsg::FlexivState> state_msg;
   Eigen::VectorXd q_stop_for_gripper;
 
+  std::chrono::time_point<std::chrono::high_resolution_clock> t_stream_joint_pos_last = std::chrono::high_resolution_clock::now();
+
+
   virtual void _send_cmd_torque(const FlexivMsg::FlexivCmd &cmd)
   {
 
@@ -942,6 +945,23 @@ private:
     }
     else
     {
+    //   auto t_stream_joint_pos = std::chrono::high_resolution_clock::now();
+
+      
+    //   int time_loop_us = std::chrono::duration_cast<std::chrono::microseconds>(
+    //                        t_stream_joint_pos - t_stream_joint_pos_last)
+    //                        .count();
+
+    // if (time_loop_us > 1e3)
+    //  {
+    //   spdlog::warn("Callback took too long: {} us", time_loop_us);
+    //  }
+
+    //  t_stream_joint_pos_last = t_stream_joint_pos; 
+
+
+      
+    
       robot.StreamJointPosition(target_pos, target_vel, target_acc);
     }
   }
@@ -1227,7 +1247,7 @@ int main(int argc, char *argv[])
 
   /* First, a domain participant is needed.
    * Create one on the default domain. */
-  dds::domain::DomainParticipant participant(domain::default_id());
+  dds::domain::DomainParticipant participant(10);
 
   /* To subscribe to something, a topic is needed. */
   dds::topic::Topic<FlexivMsg::FlexivCmd> topic_cmd(participant, "FlexivCmd");

@@ -30,7 +30,7 @@ class FlexivDDSClient:
     def __init__(self, create_server_cmd: List[str] = []):
 
         self.create_server_cmd = create_server_cmd
-        self.domain_participant = DomainParticipant()
+        self.domain_participant = DomainParticipant(10)
 
         self.topic_cmd = Topic(self.domain_participant, "FlexivCmd", FlexivCmd)
         self.publisher = Publisher(self.domain_participant)

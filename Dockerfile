@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y -qq --no-install-recommends \
     libglm-dev \
     wget \
     ninja-build \
+    fzf \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Miniconda
