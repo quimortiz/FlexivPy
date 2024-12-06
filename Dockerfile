@@ -35,6 +35,7 @@ RUN apt-get update && apt-get install -y -qq --no-install-recommends \
     wget \
     ninja-build \
     fzf \
+    libusb-1.0-0-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Miniconda
@@ -58,7 +59,12 @@ ENV CYCLONEDDS_HOME $CONDA_PREFIX
 # pinocchio and crocoddyl
 RUN conda install -y -c conda-forge \
                         pinocchio \
-                        crocoddyl 
+                        crocoddyl \
+                        cxx-compiler \
+                        cmake \ 
+                        jupyter \
+                        ipykernel
+
 
 RUN conda install -c menpo opencv \
     && conda clean -afy
@@ -68,11 +74,14 @@ RUN pip install mujoco \
                 matplotlib \
                 rerun-sdk \
                 opencv-python \
-                opencv-contrib-python
+                opencv-contrib-python \
+                imageio[ffmpeg] \
+                yaml-cpp \
+                pyrealsense2 \
+                pygame
 
 
-RUN conda install conda-forge::cxx-compiler 
-RUN conda install -c conda-forge cmake
+
 # # CycloneDDS
 WORKDIR /root
 RUN git clone https://github.com/eclipse-cyclonedds/cyclonedds && \
@@ -102,7 +111,7 @@ RUN git clone https://github.com/flexivrobotics/flexiv_rdk  \
     cmake --build . --target install --config Release
 
 
-RUN conda install conda-forge::yaml-cpp
+
 # # Install the FlexivPy bridge
 COPY flexivpy_bridge /root/flexivpy_bridge
 WORKDIR /root/flexivpy_bridge
@@ -114,10 +123,10 @@ RUN mkdir build && cd build && cmake .. -DCMAKE_PREFIX_PATH=$CONDA_PREFIX \
 RUN echo export "export PATH=$PATH:/root/flexivpy_bridge/build" >> ~/.bashrc
 RUN echo export "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib" >> ~/.bashrc
 
-RUN pip install pyrealsense2 pygame
-RUN apt-get update && apt-get install -y -qq --no-install-recommends libusb-1.0-0-dev
 
-RUN conda install -n flexivpy -c conda-forge jupyter ipykernel
+
+
+RUN conda install -n flexivpy  
 RUN conda run -n flexivpy python -m ipykernel install --name "flexivpy" --display-name "Python (flexivpy)"
 
 RUN echo "conda activate flexivpy" >> ~/.bashrc
