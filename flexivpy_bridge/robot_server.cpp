@@ -475,9 +475,9 @@ struct RobotController
         !is_gripper_closed() && !is_gripper_open();
     const bool gripper_not_moving = !is_gripper_moving();
     const bool good_force = gripper.states().force > gripper_min_closing_force;
-    std::cout << "moving = " << is_gripper_moving() << std::endl;
-    std::cout << "force = " << gripper.states().force << std::endl;
-    std::cout << "width = " << gripper.states().width << std::endl;
+    // std::cout << "moving = " << is_gripper_moving() << std::endl;
+    // std::cout << "force = " << gripper.states().force << std::endl;
+    // std::cout << "width = " << gripper.states().width << std::endl;
     return good_finger_position && gripper_not_moving && good_force;
   }
 

@@ -41,7 +41,9 @@ class ImagePublisher:
                 image = cv2.resize(
                     image, (new_width, new_height), interpolation=cv2.INTER_LINEAR
                 )
+                # change from RGB to 
                 # Convert frame to a byte array
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
                 _, buffer = cv2.imencode(".png", image)
                 image_bytes = buffer.tobytes()
 
@@ -108,7 +110,7 @@ if __name__ == "__main__":
 
     # camera = Camera()
 
-    img_publisher = ImagePublisher(camera )
+    img_publisher = ImagePublisher(camera)
 
     try:
         img_publisher.run()
