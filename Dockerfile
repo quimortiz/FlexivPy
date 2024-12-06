@@ -93,17 +93,20 @@ RUN git clone https://github.com/eclipse-cyclonedds/cyclonedds-cxx &&\
     
 # Flexiv SDK
 WORKDIR /root
-RUN git clone https://github.com/flexivrobotics/flexiv_rdk && cd flexiv_rdk/thirdparty && \ 
+RUN git clone https://github.com/flexivrobotics/flexiv_rdk  \
+    && cd flexiv_rdk && git checkout 7f020e6bf37bd09e534cc5da591183af3ccec4c9 && \
+    cd thirdparty && \ 
     bash build_and_install_dependencies.sh $CONDA_PREFIX && \ 
     cd .. && mkdir build && cd build && \
     cmake .. -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DINSTALL_PYTHON_RDK=OFF && \
     cmake --build . --target install --config Release
 
-# Install the FlexivPy bridge
+
+RUN conda install conda-forge::yaml-cpp
+# # Install the FlexivPy bridge
 COPY flexivpy_bridge /root/flexivpy_bridge
 WORKDIR /root/flexivpy_bridge
 # if the source directory on the host system contains a build directory, delete it in the container
-RUN conda install yaml-cpp
 RUN ( [ -d "build" ] && rm -rf "build" ) || true 
 RUN mkdir build && cd build && cmake .. -DCMAKE_PREFIX_PATH=$CONDA_PREFIX \
     && make -j4

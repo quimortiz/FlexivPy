@@ -85,6 +85,7 @@ class CloseGripper:
         """ """
 
         if state.g_state == "closed" or state.g_state == "holding":
+            print(state.g_state)
             return True
         else:
             return False
