@@ -57,13 +57,14 @@ ENV CYCLONEDDS_HOME $CONDA_PREFIX
 # Install the dependencies
 
 # pinocchio and crocoddyl
-RUN conda install -y -c conda-forge \
+RUN conda run -n flexivpy conda install -y -c conda-forge \
                         pinocchio \
                         crocoddyl \
                         cxx-compiler \
                         cmake \ 
                         jupyter \
-                        ipykernel
+                        ipykernel \
+                        yaml-cpp
 
 
 RUN conda install -c menpo opencv \
@@ -76,7 +77,6 @@ RUN pip install mujoco \
                 opencv-python \
                 opencv-contrib-python \
                 imageio[ffmpeg] \
-                yaml-cpp \
                 pyrealsense2 \
                 pygame
 
@@ -126,9 +126,9 @@ RUN echo export "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib" >> ~/.b
 
 
 
-RUN conda install -n flexivpy  
+# RUN conda install -n flexivpy  
 RUN conda run -n flexivpy python -m ipykernel install --name "flexivpy" --display-name "Python (flexivpy)"
-
+# RUN python -m ipykernel install --name "flexivpy" --display-name "Python (flexivpy)"
 RUN echo "conda activate flexivpy" >> ~/.bashrc
 # Env vars for the nvidia-container-runtime
 ENV NVIDIA_VISIBLE_DEVICES all
