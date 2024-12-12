@@ -12,21 +12,23 @@ from FlexivPy.planners.rrt import RRT
 
 class RRTController:
     def __init__(
-        self, 
-        home_state=None, 
-        pin_robot=None, 
-        dt=0.01, 
-        goal_tolerance=5 * 1e-2, 
-        max_velocity=0.2, 
-        visualize = False, 
-        kp = 2.0 * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0]), 
-        kv = 1.5 * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0]),
-        control_mode='velocity'
+        self,
+        home_state=None,
+        pin_robot=None,
+        dt=0.01,
+        goal_tolerance=5 * 1e-2,
+        max_velocity=0.2,
+        visualize=False,
+        kp=2.0 * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0]),
+        kv=1.5 * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0]),
+        control_mode="velocity",
     ):
         try:
-            self.control_mode = {'velocity':3, 'torque':2, 'position':1}[control_mode]
+            self.control_mode = {"velocity": 3, "torque": 2, "position": 1}[
+                control_mode
+            ]
         except:
-            raise Exception('The selected control mode is not valid!')
+            raise Exception("The selected control mode is not valid!")
         self.kp = kp
         self.kv = kv
         self.visualize = visualize
@@ -34,7 +36,7 @@ class RRTController:
             self.goal = home_state
         else:
             self.goal = np.array([0.0, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000])
-        
+
         if pin_robot is not None:
             self.pin_robot = pin_robot
         else:
@@ -52,7 +54,7 @@ class RRTController:
             )
             pin_robot.rebuildData()
             self.pin_robot = pin_robot
-        
+
         self.goal_tolerance = goal_tolerance
         self.dt = dt
         self.max_velocity = max_velocity
@@ -68,9 +70,10 @@ class RRTController:
 
         # self.collision_check_fn = lambda q:  True
 
-        self.rrt = RRT(is_collision_free=self.collision_check_fn,
-                       sample_fun=lambda: np.random.rand(7) * 2 * np.pi - np.pi,
-                )
+        self.rrt = RRT(
+            is_collision_free=self.collision_check_fn,
+            sample_fun=lambda: np.random.rand(7) * 2 * np.pi - np.pi,
+        )
 
     def setup(self, s):
 
@@ -85,7 +88,7 @@ class RRTController:
         self.start = start
         self.path = self.rrt.solve(self.start, self.goal)
         self.current_subgoal_id = 0
-    
+
     def visualize_path(self, path):
 
         vizer = MeshcatVisualizer(
@@ -124,11 +127,7 @@ class RRTController:
         desq_next = q + self.dt * velocity
 
         return FlexivCmd(
-            q=desq_next,
-            dq=velocity,
-            kp=self.kp,
-            kv=self.kv,
-            mode = self.control_mode
+            q=desq_next, dq=velocity, kp=self.kp, kv=self.kv, mode=self.control_mode
         )
 
     def applicable(self, s, tic):
@@ -140,7 +139,7 @@ class RRTController:
 
 
 class JointFloating:
-    def __init__(self, kv_scale=1., dt=0.01):
+    def __init__(self, kv_scale=1.0, dt=0.01):
         self.kv_scale = kv_scale
         self.kv = kv_scale * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
         self.dt = dt
@@ -234,7 +233,7 @@ class GoJointConfiguration:
             cmd = FlexivCmd(q=p, dq=pdot, mode=1)
         elif self.control_mode == "velocity":
             raise NotImplementedError
-            # NOTE: this does not reach the goal and lags behind. 
+            # NOTE: this does not reach the goal and lags behind.
             # print("pdot is", pdot)
             # cmd = FlexivCmd(dq=pdot, mode=1)
         return cmd
@@ -263,32 +262,35 @@ class GoJointConfiguration:
             np.linalg.norm(qv) < self.error_goal
             and np.linalg.norm(q - self.qdes) < self.error_goal
         )
-    
+
 
 class GoJointConfigurationVelocity:
-    def __init__(self, qgoal, error_goal=0.01, max_v = .1,
-                 kd = 1., smooth_velocity = .9):
+    def __init__(
+        self, qgoal, error_goal=0.01, max_v=0.1, kd=1.0, smooth_velocity=0.9, dt=0.01
+    ):
         self.kd = kd
         self.qgoal = qgoal
         self.error_goal = error_goal
         self.max_v = max_v
         self.smooth_velocity = smooth_velocity
+        self.dt = dt
 
     def setup(self, s):
         pass
 
     def get_control(self, state, tic):
-        """
-
-        """
-        v = self.kd * (self.qgoal - state.q) 
+        """ """
+        v = self.kd * (self.qgoal - state.q)
         if np.linalg.norm(v) > self.max_v:
             v /= np.linalg.norm(v)
 
         if self.smooth_velocity > 1e-6:
-            v = self.smooth_velocity * np.array(state.dq) + (1 - self.smooth_velocity) * v
+            v = (
+                self.smooth_velocity * np.array(state.dq)
+                + (1 - self.smooth_velocity) * v
+            )
 
-        return FlexivCmd(dq=v , mode=3)
+        return FlexivCmd(dq=v, mode=3)
 
     def applicable(self, state, tic):
         return True
@@ -297,29 +299,29 @@ class GoJointConfigurationVelocity:
         q = np.array(state.q)
         error = np.linalg.norm(q - self.qgoal)
         error_v = np.linalg.norm(state.dq)
-        return error + error_v  < self.error_goal
-    
+        return error + error_v < self.error_goal
 
-class JointFloatingPython():
-    def __init__(self, robot): 
-        self.kv = 1./4. * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
+
+class JointFloatingPython:
+    def __init__(self, robot):
+        self.kv = 1.0 / 4.0 * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
         self.robot = robot
 
-    def setup(self,s):
+    def setup(self, s):
         pass
 
-    def get_control(self,state,tic):
+    def get_control(self, state, tic):
 
         tau_g = self.robot.gravity(np.array(state.q))
 
-
         # get gravity compensation
-        return  FlexivCmd(
-                    tau_ff = tau_g,
-                    kv=self.kv,
-                    tau_ff_with_gravity=True,
+        return FlexivCmd(
+            tau_ff=tau_g,
+            kv=self.kv,
+            tau_ff_with_gravity=True,
         )
-    
+
+
 class Stay:
     def __init__(self):
         self.kp = 1 * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
