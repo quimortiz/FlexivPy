@@ -14,7 +14,7 @@ from cyclonedds.topic import Topic
 from FlexivPy.robot.dds.flexiv_messages import FlexivState
 
 
-domain_participant = DomainParticipant(10)
+domain_participant = DomainParticipant(42)
 topic_state = Topic(domain_participant, "FlexivState", FlexivState)
 subscriber = Subscriber(domain_participant)
 reader = DataReader(subscriber, topic_state)

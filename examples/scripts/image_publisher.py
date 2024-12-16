@@ -22,7 +22,7 @@ from datetime import datetime
 
 class ImagePublisher:
     def __init__(self, dt=0.05, camera_id=0):
-        self.domain_participant = DomainParticipant(10)
+        self.domain_participant = DomainParticipant(42)
         self.topic_state_image = Topic(self.domain_participant, "EnvImage", EnvImage)
         self.publisher_image = Publisher(self.domain_participant)
         self.writer_image = DataWriter(self.publisher_image, self.topic_state_image)
