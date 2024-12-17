@@ -77,7 +77,8 @@ RUN pip install mujoco \
                 opencv-contrib-python \
                 imageio[ffmpeg] \
                 pyrealsense2 \
-                pygame
+                pygame \
+                meshcat
 
 
 

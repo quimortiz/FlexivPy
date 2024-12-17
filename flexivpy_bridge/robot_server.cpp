@@ -42,7 +42,7 @@
 #include "pinocchio/parsers/srdf.hpp"
 #include "pinocchio/parsers/urdf.hpp"
 
-#include "hpp/fcl/shape/geometric_shapes.h"
+#include "coal/shape/geometric_shapes.h"
 #include "pinocchio/algorithm/frames.hpp"
 #include "pinocchio/algorithm/geometry.hpp"
 #include "pinocchio/multibody/fcl.hpp"
@@ -1247,7 +1247,7 @@ int main(int argc, char *argv[])
 
   /* First, a domain participant is needed.
    * Create one on the default domain. */
-  dds::domain::DomainParticipant participant(10);
+  dds::domain::DomainParticipant participant(42);
 
   /* To subscribe to something, a topic is needed. */
   dds::topic::Topic<FlexivMsg::FlexivCmd> topic_cmd(participant, "FlexivCmd");

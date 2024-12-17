@@ -22,7 +22,7 @@ from FlexivPy.robot.dds.flexiv_messages import EnvImage
 
 class ImagePublisher:
     def __init__(self, realsense_camera: RealSenseCamera, dt=0.01):
-        self.domain_participant = DomainParticipant(10)
+        self.domain_participant = DomainParticipant(42)
         self.topic_state_image = Topic(self.domain_participant, "EnvImage", EnvImage)
         self.publisher_image = Publisher(self.domain_participant)
         self.writer_image = DataWriter(self.publisher_image, self.topic_state_image)
@@ -60,7 +60,7 @@ class ImagePublisher:
 
 class ImagePublisher2:
     def __init__(self, dt=0.05, camera_id=0):
-        self.domain_participant = DomainParticipant(10)
+        self.domain_participant = DomainParticipant(42)
         self.topic_state_image = Topic(self.domain_participant, "EnvImage", EnvImage)
         self.publisher_image = Publisher(self.domain_participant)
         self.writer_image = DataWriter(self.publisher_image, self.topic_state_image)
