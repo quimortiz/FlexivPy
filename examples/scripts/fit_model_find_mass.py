@@ -8,8 +8,8 @@ import numpy as np
 from scipy.optimize import minimize
 
 
-with open('array_slow_v3.pkl', 'rb') as f:
-    data  = pickle.load(f)
+with open("array_slow_v3.pkl", "rb") as f:
+    data = pickle.load(f)
 
 
 # urdf = "/home/quim/code/FlexivPy/FlexivPy/assets/modified_robot.urdf"
@@ -22,10 +22,11 @@ robot = RobotWrapper.BuildFromURDF(urdf, meshes_dir)
 d = data[0]
 
 tau_g = robot.gravity(np.array(d.q))
-x0 = np.array( [i.mass for i in robot.model.inertias])
+x0 = np.array([i.mass for i in robot.model.inertias])
 # print("x0 is ", x0)
 
-reg_weight = .05
+reg_weight = 0.05
+
 
 def error(x):
     for i in range(8):
@@ -102,12 +103,9 @@ tree = ET.parse(urdf)
 root = tree.getroot()
 
 
-
-
-
 # D ={ "base_link" : 0,
 #     "link1": 1,
-#     "link2" : 2 , 
+#     "link2" : 2 ,
 #     "link3": 3,
 #     "link4": 4,
 #     "link5": 5,
@@ -116,16 +114,17 @@ root = tree.getroot()
 #     # "flange": 8,
 #     }
 
-D ={ "rizon_base_link" : 0,
+D = {
+    "rizon_base_link": 0,
     "rizon_link1": 1,
-    "rizon_link2" : 2 , 
+    "rizon_link2": 2,
     "rizon_link3": 3,
     "rizon_link4": 4,
     "rizon_link5": 5,
     "rizon_link6": 6,
-    "rizon_link7": 7
+    "rizon_link7": 7,
     # "flange": 8,
-    }
+}
 
 xsol = min_res.x
 
@@ -137,11 +136,12 @@ for link in root.findall("link"):
         # Modify the mass
         mass_element = inertial.find("mass")
         if mass_element is not None:
-            if link.get('name') == "flange":
+            if link.get("name") == "flange":
                 continue
-            mass_element.set('value',
-                             str(xsol[D[link.get('name')]]))
-            print("setting mass of ", link.get('name'), " to ", xsol[D[link.get('name')]])
+            mass_element.set("value", str(xsol[D[link.get("name")]]))
+            print(
+                "setting mass of ", link.get("name"), " to ", xsol[D[link.get("name")]]
+            )
         # Modify the inertia's origin (xyz)
         origin_element = inertial.find("origin")
         if origin_element is not None:

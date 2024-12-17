@@ -6,7 +6,8 @@ slow_states = []
 
 robot = robot_client.Flexiv_client()
 import pickle
-with open('traj_with_gripper.pkl', 'rb') as f:
+
+with open("traj_with_gripper.pkl", "rb") as f:
     states = pickle.load(f)
 
 qs = [s.q for s in states]

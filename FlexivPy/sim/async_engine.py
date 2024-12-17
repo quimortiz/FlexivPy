@@ -16,9 +16,11 @@ from FlexivPy.robot.dds.flexiv_messages import (
     FlexivCmd,
     FlexivState,
     EnvImage,
-    EnvState)
+    EnvState,
+)
 
 import cv2
+
 
 def view_image(image):
     cv2.imshow(f"tmp-async", image)
@@ -27,11 +29,10 @@ def view_image(image):
             break
     cv2.destroyWindow("tmp-async")
 
+
 class AsyncSimManager:
-    def __init__(self, 
-                 simulator, 
-                 timeout):
-        
+    def __init__(self, simulator, timeout):
+
         self.CV2 = None
         self.dt = simulator.dt
         self.timeout = timeout
@@ -50,6 +51,7 @@ class AsyncSimManager:
         self.simulator = simulator
         if self.simulator.camera_renderer is not None:
             import cv2
+
             self.CV2 = cv2
             self.topic_state_image = Topic(
                 self.domain_participant, "EnvImage", EnvImage
@@ -57,8 +59,8 @@ class AsyncSimManager:
             self.publisher_image = Publisher(self.domain_participant)
             self.writer_image = DataWriter(self.publisher_image, self.topic_state_image)
         self.stop_dt = 0.15  # [s] if i don't receive a cmd in this time, stop the robot
-        self.running = True 
-        self.simulation_thread=Thread(target=self.run())
+        self.running = True
+        self.simulation_thread = Thread(target=self.run())
         self.simulation_thread.start()
 
     def compute_default_command(self):

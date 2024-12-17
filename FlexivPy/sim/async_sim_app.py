@@ -7,19 +7,31 @@ import time
 import signal
 
 running = True
+
+
 def signal_handler(sig, frame):
     running = False
-    
+
+
 def main():
     argp = argparse.ArgumentParser()
-    argp.add_argument("--render", action="store_true", default=True, help="render the simulation")
+    argp.add_argument(
+        "--render", action="store_true", default=True, help="render the simulation"
+    )
     argp.add_argument(
         "--config", type=str, default="FlexivPy/config/robot.yaml", help="config file"
     )
     argp.add_argument("--render_images", action="store_true", help="render images")
     argp.add_argument("--xml_path", type=str, default=None, help="xml path")
-    argp.add_argument("--timeout", type=float, default=np.inf, help="simulation duration")
-    argp.add_argument("--mode", type=str, default='torque', help="control mode: position, velocity, or torque")
+    argp.add_argument(
+        "--timeout", type=float, default=np.inf, help="simulation duration"
+    )
+    argp.add_argument(
+        "--mode",
+        type=str,
+        default="torque",
+        help="control mode: position, velocity, or torque",
+    )
     argp.add_argument("--urdf", type=str, default=None, help="urdf path")
     argp.add_argument(
         "--meshes_dir", type=str, default=None, help="meshes directrory path"
@@ -43,17 +55,17 @@ def main():
     )
 
     simulator = FlexivSimMujoco(
-                                dt=dt,
-                                mode=args.mode,
-                                render=args.render,
-                                xml_path=args.xml_path,
-                                q0=q0,
-                                pin_model=robot_model.robot,
-                                render_images=args.render_images,
-                                joint_names=args.joints,
-                                has_gripper=args.has_gripper,
-                                camera_name=args.camera_name
-                                    )
+        dt=dt,
+        mode=args.mode,
+        render=args.render,
+        xml_path=args.xml_path,
+        q0=q0,
+        pin_model=robot_model.robot,
+        render_images=args.render_images,
+        joint_names=args.joints,
+        has_gripper=args.has_gripper,
+        camera_name=args.camera_name,
+    )
     sim = AsyncSimManager(simulator, timeout=args.timeout)
     signal.signal(signal.SIGINT, signal_handler)
     while sim.running:
@@ -62,6 +74,7 @@ def main():
         else:
             sim.terminate()
             time.sleep(1)
+
 
 if __name__ == "__main__":
     main()

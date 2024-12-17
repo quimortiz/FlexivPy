@@ -11,7 +11,6 @@ from FlexivPy.robot.dds.flexiv_messages import (
 )
 
 
-
 class KeyboardJointControl:
     def __init__(self, pin_robot, approx_dt=0.01):
         self.robot = pin_robot

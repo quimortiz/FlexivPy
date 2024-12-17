@@ -14,8 +14,8 @@ class DiffIKController:
     def __init__(
         self,
         model,
-        T_cmd_fun = None, 
-        T_cmd = None,
+        T_cmd_fun=None,
+        T_cmd=None,
         dt=0.01,
         ef_frame="link7",
         kp=0.5 * np.diag([10, 10, 10, 10, 10, 10]),
@@ -29,7 +29,6 @@ class DiffIKController:
     ):
         if T_cmd_fun is None and T_cmd is None:
             raise Exception("Either T_cmd_fun or T_cmd must be provided!")
-
 
         # define solver
         self.model = model
@@ -94,14 +93,8 @@ class DiffIKController:
     def get_control(self, state, t):
         if self.T_cmd is None:
             T_des = self.T_cmd_fun(state)
-        else: 
+        else:
             T_des = self.T_cmd
-
-        
-
-
-
-
 
         dq_des = self.__call__(np.array(state.q), np.array(state.dq), T_des)
         self.q_des += self.dt * dq_des

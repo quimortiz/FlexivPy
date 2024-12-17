@@ -7,13 +7,10 @@ import numpy as np
 from typing import List
 
 
-
 from FlexivPy.robot.dds.flexiv_messages import FlexivState, FlexivCmd
 
 import rerun as rr
 from FlexivPy.robot.dds.subscriber import SubscriberNode
-
-
 
 
 from datetime import datetime

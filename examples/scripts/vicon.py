@@ -13,39 +13,41 @@ import sys
 # create a small python viewer
 
 
-
 # p_robot_frame = T_vicon_to_robot @ p_vicon
 # R = np.eye(3)
 # p = np.array([0.48, 0, 0])
 # T_vicon_to_robot = pin.SE3(R, p)
 # T_cube_vicon_to_ref = pin.SE3()
 #
-# # D_vicon_frame_to_ref_frame = {"cube2": pin.SE3.Identity() }         
+# # D_vicon_frame_to_ref_frame = {"cube2": pin.SE3.Identity() }
 
 from vicon_env_state import ViconEnvState
 
 
-p_black = np.array([-.05, 0, -.03])
+p_black = np.array([-0.05, 0, -0.03])
 # p_black = np.array([.0, 0, .0])
 R_black = np.eye(3)
 
 T_black = pin.SE3(R_black, p_black)
 
 
-p_yellow = np.array([-.055, 0, .0])
+p_yellow = np.array([-0.055, 0, 0.0])
 # p_yellow = np.array([.055, 0, .0])
 # p_yellow = np.array([.0, 0, .0])
-R_yellow  = np.eye(3)
+R_yellow = np.eye(3)
 T_yellow = pin.SE3(R_yellow, p_yellow)
 
-D_ref_frame_wrt_vicon_frame = {"box_black":T_black, 
-                              "box_yellow": T_yellow }         
+D_ref_frame_wrt_vicon_frame = {"box_black": T_black, "box_yellow": T_yellow}
 
 
-Base_T_viconW = np.array( [[ 9.99952235e-01,  9.46723556e-03,  2.42897816e-03,  2.89813540e-01],
-      [-9.46543818e-03,  9.99954920e-01 ,-7.50407225e-04, -1.23062361e-02],
-      [-2.43597295e-03 , 7.27380039e-04,  9.99996768e-01  ,7.88964024e-04],
-      [ 0.00000000e+00  ,0.00000000e+00,  0.00000000e+00,  1.00000000e+00]])
+Base_T_viconW = np.array(
+    [
+        [9.99952235e-01, 9.46723556e-03, 2.42897816e-03, 2.89813540e-01],
+        [-9.46543818e-03, 9.99954920e-01, -7.50407225e-04, -1.23062361e-02],
+        [-2.43597295e-03, 7.27380039e-04, 9.99996768e-01, 7.88964024e-04],
+        [0.00000000e00, 0.00000000e00, 0.00000000e00, 1.00000000e00],
+    ]
+)
 
 # second trial!
 # Y, Base_T_viconW [[ 9.99954198e-01  9.22798942e-03  2.53875336e-03  2.89738982e-01]
@@ -59,15 +61,17 @@ Base_T_viconW = np.array( [[ 9.99952235e-01,  9.46723556e-03,  2.42897816e-03,  
 #  [ 0.00000000e+00  ,0.00000000e+00,  0.00000000e+00,  1.00000000e+00]])
 
 
-Base_T_viconW = np.array( [[ 9.99840687e-01,  1.77210742e-02,  2.13643729e-03,  2.89607673e-01],
- [-1.77168764e-02,  9.99841107e-01, -1.96799840e-03, -1.12452615e-02],
- [-2.17097287e-03,  1.92983388e-03,  9.99995781e-01, -7.68970272e-04],
- [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  1.00000000e+00]])
+Base_T_viconW = np.array(
+    [
+        [9.99840687e-01, 1.77210742e-02, 2.13643729e-03, 2.89607673e-01],
+        [-1.77168764e-02, 9.99841107e-01, -1.96799840e-03, -1.12452615e-02],
+        [-2.17097287e-03, 1.92983388e-03, 9.99995781e-01, -7.68970272e-04],
+        [0.00000000e00, 0.00000000e00, 0.00000000e00, 1.00000000e00],
+    ]
+)
 
 
-
-
-vicon_wrt_robot = pin.SE3(Base_T_viconW[:3,:3], Base_T_viconW[:3,3])
+vicon_wrt_robot = pin.SE3(Base_T_viconW[:3, :3], Base_T_viconW[:3, 3])
 
 # vicon_wrt_robot = pin.SE3(np.eye(3), np.array([0.29, 0, 0]) )
 
@@ -77,14 +81,13 @@ vicon_wrt_robot = pin.SE3(Base_T_viconW[:3,:3], Base_T_viconW[:3,3])
 # Base_T_viconW.translation = # pin.SE3(R_yellow, p_yellow)
 
 
-
-
 env_state = ViconEnvState(
-    T_vicon_to_robot = vicon_wrt_robot,
-    D_ref_frame_wrt_vicon_frame = D_ref_frame_wrt_vicon_frame  )
+    T_vicon_to_robot=vicon_wrt_robot,
+    D_ref_frame_wrt_vicon_frame=D_ref_frame_wrt_vicon_frame,
+)
 
 
-# import 
+# import
 
 # class QEnvState:
 #
@@ -98,10 +101,10 @@ env_state = ViconEnvState(
 #         for i in range(1000):
 #             self.mc.waitForNextFrame()
 #             time.sleep(.001)
-#        
+#
 #
 #     def get_state(self):
-#         self.mc.waitForNextFrame()        
+#         self.mc.waitForNextFrame()
 #         D = {}
 #         for name, obj in self.mc.rigidBodies.items():
 #             quat = pin.Quaternion(w=obj.rotation.w, x=obj.rotation.x, y=obj.rotation.y, z=obj.rotation.z)
@@ -112,18 +115,18 @@ env_state = ViconEnvState(
 #                 T = self.D_vicon_frame_to_ref_frame[name] * T # TODO: check the math here!
 #             T = self.T_vicon_to_robot * T # transform to the robot frame
 #             D[name] = T
-#            
-#             
+#
+#
 #         return D
 
 
 # get the state of the environment
 print("getting state of the environment")
 state = env_state.get_state()
-print(state['box_yellow'].translation)
-print(state['box_yellow'].rotation)
-print(state['box_black'].translation)
-print(state['box_black'].rotation)
+print(state["box_yellow"].translation)
+print(state["box_yellow"].rotation)
+print(state["box_black"].translation)
+print(state["box_black"].rotation)
 
 z_offset = 0.3
 
@@ -186,7 +189,7 @@ print("the position of the flange is \n", T.translation)
 print("the orientation of the flange is \n", T.rotation)
 
 
-oMdes = pin.SE3( T.rotation , state['box_black'].translation)
+oMdes = pin.SE3(T.rotation, state["box_black"].translation)
 oMdes.translation[2] += z_offset
 
 kp_scale = 1.0
@@ -194,23 +197,20 @@ kv_scale = 1.0
 
 print("oMdes is ", oMdes)
 
-Rdes = np.array( [[-1. , 0., 0. ],
-                 [ 0.  , 1.,  0.],
-                 [ 0. , 0. , -1.]] )
+Rdes = np.array([[-1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]])
 
 controller = easy_controllers.InverseKinematicsControllerVicon(
-     robot=pin_model,
-     oMdes=oMdes,
-     approx_dt=0.01,
-     frame_id=frame_id_flange,
-     kp_scale=1.2 * kp_scale,
-     kv_scale=1.2 * kv_scale,
-     vicon = env_state, 
-     kvv = 2*10.,
-    w_weight = 1.,
-     Rdes = Rdes)
-
-
+    robot=pin_model,
+    oMdes=oMdes,
+    approx_dt=0.01,
+    frame_id=frame_id_flange,
+    kp_scale=1.2 * kp_scale,
+    kv_scale=1.2 * kv_scale,
+    vicon=env_state,
+    kvv=2 * 10.0,
+    w_weight=1.0,
+    Rdes=Rdes,
+)
 
 
 status = easy_controllers.run_controller(
@@ -222,4 +222,3 @@ status = easy_controllers.run_controller(
     max_time=np.inf,
 )
 print(status)
-

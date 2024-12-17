@@ -19,15 +19,15 @@ class Mpc_cfg:
 class Mpc_generator:
     def __init__(self, robot, x0, Tdes, mpc_cfg: Mpc_cfg = Mpc_cfg()):
         """
-        
-        Notes: 
 
-        After solving and optimization problem, you can access information with: 
+        Notes:
+
+        After solving and optimization problem, you can access information with:
         solver.problem.terminalData.differential.multibody.pinocchio.oMf[robot_model.getFrameId("link7")].translation.T,
 
-        
-        
-        
+
+
+
         """
 
         self.mpc_cfg = mpc_cfg
@@ -137,7 +137,3 @@ class Mpc_generator:
         self.problem.terminal_model.differential.costs.costs[
             "gripperPose"
         ].cost.residual.reference = Tdes
-
-
-
-

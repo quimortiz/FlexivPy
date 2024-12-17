@@ -17,10 +17,11 @@ def view_image(image):
             break
     cv2.destroyWindow("tmp")
 
+
 class FlexivSimMujoco:
     def __init__(
         self,
-        mode = "torque",
+        mode="torque",
         render=False,
         dt=0.001,
         xml_path=None,
@@ -32,10 +33,14 @@ class FlexivSimMujoco:
         object_names=[],
         joint_names=None,
         has_gripper=False,
-        camera_name = "static_camera", 
-        gravity = np.array([0., 0., -9.81])
+        camera_name="static_camera",
+        gravity=np.array([0.0, 0.0, -9.81]),
     ):
-        assert mode in ['position', 'velocity', 'torque'], 'Mode can only be: position, velocity, or torque'
+        assert mode in [
+            "position",
+            "velocity",
+            "torque",
+        ], "Mode can only be: position, velocity, or torque"
         self.mode = mode
         self.dt = dt
         self.camera_name = camera_name
@@ -47,7 +52,7 @@ class FlexivSimMujoco:
             self.q0 = q0
         else:
             self.q0 = np.array([0.0, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000])
-        
+
         # initialize the command with a zero buffer
         self.cmd = flexiv_messages.FlexivCmd()
         self.cmd.q = self.q0
@@ -77,17 +82,22 @@ class FlexivSimMujoco:
             )
         else:
             self.model = mujoco.MjModel.from_xml_path(xml_path)
-        
+
         self.data = mujoco.MjData(self.model)
-        self.joints_upper_limits = np.array([self.model.joint(joint_name).range[1] for joint_name in self.joint_names])
-        self.joints_lower_limits = np.array([self.model.joint(joint_name).range[0] for joint_name in self.joint_names])
-        
+        self.joints_upper_limits = np.array(
+            [self.model.joint(joint_name).range[1] for joint_name in self.joint_names]
+        )
+        self.joints_lower_limits = np.array(
+            [self.model.joint(joint_name).range[0] for joint_name in self.joint_names]
+        )
+
         self.model.opt.gravity = self.gravity.squeeze()
-        self.model.opt.timestep = self.dt    
+        self.model.opt.timestep = self.dt
         # Enable camera simulation?
         self.last_camera_image = None
         if render_images:
             import cv2
+
             self.CV2 = cv2
             # TODO: adpat this code to include more camera if desired!
             self.camera_renderer = mujoco.Renderer(self.model, 480, 640)
@@ -104,7 +114,7 @@ class FlexivSimMujoco:
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
             _render_dt = 1.0 / 30.0
             self.render_ds_ratio = max(1, _render_dt // dt)
-        
+
         # Load a default piochhio model if it's not provided by the user
         if pin_model is not None:
             self.pin_model = pin_model
@@ -114,11 +124,12 @@ class FlexivSimMujoco:
                     self.pin_model.model, self.pin_model.data, self.q0
                 )
             except:
-                assert False, 'The provided Pinocchio model is not right.'
+                assert False, "The provided Pinocchio model is not right."
         else:
             urdf = os.path.join(ASSETS_PATH, "flexiv_rizon10s_kinematics.urdf")
             meshes_dir = os.path.join(ASSETS_PATH, "meshes")
             from pinocchio.robot_wrapper import RobotWrapper
+
             self.pin_model = RobotWrapper.BuildFromURDF(urdf, meshes_dir)
 
         self.reset_state_robot(self.q0, np.zeros(7))
@@ -207,7 +218,7 @@ class FlexivSimMujoco:
             # input('heere is the rendered image')
             # view_image(self.last_camera_image)
             # time.sleep(0.0001)
-    
+
     def set_cmd(self, cmd):
         """
         cmd: dictionary with keys 'q', 'dq', 'kp', 'kv', 'tau_ff'
@@ -215,17 +226,19 @@ class FlexivSimMujoco:
         self.cmd = cmd
 
     def set_u(self):
-        if self.mode == 'position':
+        if self.mode == "position":
             self.set_robot_joints(self.cmd.q)
             self.set_robot_vel(self.cmd.dq)
             self.data.ctrl = np.zeros(len(self.cmd.tau_ff))
-        elif self.mode == 'velocity':
-            self.integrated_q+=np.array(self.cmd.dq)*self.dt
+        elif self.mode == "velocity":
+            self.integrated_q += np.array(self.cmd.dq) * self.dt
             self.set_robot_joints(self.integrated_q)
             self.set_robot_vel(self.cmd.dq)
             self.data.ctrl = np.zeros(len(self.cmd.tau_ff))
         else:
-            q_des = np.clip(self.cmd.q, self.joints_lower_limits, self.joints_upper_limits)
+            q_des = np.clip(
+                self.cmd.q, self.joints_lower_limits, self.joints_upper_limits
+            )
             tau = (
                 np.array(self.cmd.tau_ff)
                 + np.array(self.cmd.kp) * (np.array(q_des) - self.get_robot_joints())
@@ -244,10 +257,14 @@ class FlexivSimMujoco:
                 else:
                     tau = np.append(tau, 0)
 
-            self.data.ctrl = np.clip(tau, -100*np.ones(tau.shape[0]), 100*np.ones(tau.shape[0]))
+            self.data.ctrl = np.clip(
+                tau, -100 * np.ones(tau.shape[0]), 100 * np.ones(tau.shape[0])
+            )
 
     def get_robot_tau(self):
-        return (self.data.qfrc_constraint.squeeze()+self.data.qfrc_smooth.squeeze())[0:7]
+        return (self.data.qfrc_constraint.squeeze() + self.data.qfrc_smooth.squeeze())[
+            0:7
+        ]
 
     def get_robot_state(self):
         return flexiv_messages.FlexivState(

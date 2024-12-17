@@ -18,8 +18,6 @@ from cyclonedds.topic import Topic
 from FlexivPy.robot.dds.flexiv_messages import EnvImage
 
 
-  
-
 class ImagePublisher:
     def __init__(self, realsense_camera: RealSenseCamera, dt=0.01):
         self.domain_participant = DomainParticipant(42)
@@ -41,7 +39,7 @@ class ImagePublisher:
                 image = cv2.resize(
                     image, (new_width, new_height), interpolation=cv2.INTER_LINEAR
                 )
-                # change from RGB to 
+                # change from RGB to
                 # Convert frame to a byte array
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
                 _, buffer = cv2.imencode(".png", image)
@@ -115,5 +113,5 @@ if __name__ == "__main__":
     try:
         img_publisher.run()
     finally:
-        #img_publisher.close()
+        # img_publisher.close()
         camera.close()

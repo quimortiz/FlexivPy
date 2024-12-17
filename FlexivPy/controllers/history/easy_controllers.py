@@ -272,7 +272,6 @@ class ForceController:
         return cmd
 
 
-
 class GoJointConfiguration:
     def __init__(
         self,
@@ -348,7 +347,7 @@ class GoJointConfiguration:
             cmd = FlexivCmd(q=p, dq=pdot, mode=1)
         elif self.control_mode == "velocity":
             raise NotImplementedError
-            # NOTE: this does not reach the goal and lags behind. 
+            # NOTE: this does not reach the goal and lags behind.
             # print("pdot is", pdot)
             # cmd = FlexivCmd(dq=pdot, mode=1)
         return cmd
@@ -382,8 +381,9 @@ class GoJointConfiguration:
 
 
 class GoJointConfigurationSlow:
-    def __init__(self, qgoal, error_goal=0.01, max_dq=0.005, max_v = .1,
-                 control_mode="torque"):
+    def __init__(
+        self, qgoal, error_goal=0.01, max_dq=0.005, max_v=0.1, control_mode="torque"
+    ):
         self.qgoal = qgoal
         self.error_goal = error_goal
         self.max_dq = max_dq
@@ -400,7 +400,9 @@ class GoJointConfigurationSlow:
         if self.control_mode == "torque":
             q = np.array(state.q)
             if np.linalg.norm(q - self.qgoal) > self.error_goal:
-                qgoal = q + self.max_dq * (self.qgoal - q) / np.linalg.norm(q - self.qgoal)
+                qgoal = q + self.max_dq * (self.qgoal - q) / np.linalg.norm(
+                    q - self.qgoal
+                )
             else:
                 qgoal = self.qgoal
 
@@ -409,9 +411,13 @@ class GoJointConfigurationSlow:
             raise NotImplementedError
         elif self.control_mode == "velocity":
 
-            v = self.max_v * (self.qgoal - state.q) / max(np.linalg.norm(self.qgoal - state.q), 1e-6)
+            v = (
+                self.max_v
+                * (self.qgoal - state.q)
+                / max(np.linalg.norm(self.qgoal - state.q), 1e-6)
+            )
 
-            return FlexivCmd(dq=v , mode=1)
+            return FlexivCmd(dq=v, mode=1)
 
     def applicable(self, state, tic):
         return True
@@ -422,10 +428,8 @@ class GoJointConfigurationSlow:
         return error < self.error_goal
 
 
-
 class GoJointConfigurationVelocity:
-    def __init__(self, qgoal, error_goal=0.01, max_v = .1,
-                 kd = 1., smooth_velocity = .9):
+    def __init__(self, qgoal, error_goal=0.01, max_v=0.1, kd=1.0, smooth_velocity=0.9):
         self.kd = kd
         self.qgoal = qgoal
         self.error_goal = error_goal
@@ -436,17 +440,18 @@ class GoJointConfigurationVelocity:
         pass
 
     def get_control(self, state, tic):
-        """
-
-        """
-        v = self.kd * (self.qgoal - state.q) 
+        """ """
+        v = self.kd * (self.qgoal - state.q)
         if np.linalg.norm(v) > self.max_v:
             v /= np.linalg.norm(v)
 
         if self.smooth_velocity > 1e-6:
-            v = self.smooth_velocity * np.array(state.dq) + (1 - self.smooth_velocity) * v
+            v = (
+                self.smooth_velocity * np.array(state.dq)
+                + (1 - self.smooth_velocity) * v
+            )
 
-        return FlexivCmd(dq=v , mode=3)
+        return FlexivCmd(dq=v, mode=3)
 
     def applicable(self, state, tic):
         return True
@@ -455,7 +460,7 @@ class GoJointConfigurationVelocity:
         q = np.array(state.q)
         error = np.linalg.norm(q - self.qgoal)
         error_v = np.linalg.norm(state.dq)
-        return error + error_v  < self.error_goal
+        return error + error_v < self.error_goal
 
 
 class GoEndEffectorPose:
@@ -473,13 +478,13 @@ class GoEndEffectorPose:
         self.jac_error = lambda q: frame_error_jac(
             q, self.robot, self.frame_id, self.oMdes
         )
-        min_res = minimize(self.error, jac=self.jac_error, x0=np.array(s.q), method="BFGS")
+        min_res = minimize(
+            self.error, jac=self.jac_error, x0=np.array(s.q), method="BFGS"
+        )
         self.q_des = min_res.x
         assert self.error(self.q_des) < 1e-6
 
-        self.joint_controller = GoJointConfiguration(
-            qdes=self.q_des, max_v=self.max_v
-        )
+        self.joint_controller = GoJointConfiguration(qdes=self.q_des, max_v=self.max_v)
         self.joint_controller.setup(s)
 
     def get_control(self, state, tic):
@@ -494,11 +499,19 @@ class GoEndEffectorPose:
 
 
 class InverseKinematicsController:
-    def __init__(self, robot, oMdes, frame_id, 
-                 approx_dt=0.01,kvv=2.,
-                 kp_scale=1.0, kv_scale=1.0,
-                 goal_error=1e-2, max_v=0.3,
-                 w_weight=.25) :
+    def __init__(
+        self,
+        robot,
+        oMdes,
+        frame_id,
+        approx_dt=0.01,
+        kvv=2.0,
+        kp_scale=1.0,
+        kv_scale=1.0,
+        goal_error=1e-2,
+        max_v=0.3,
+        w_weight=0.25,
+    ):
         self.approx_dt = approx_dt
         self.goal_error = goal_error
         self.robot = robot
@@ -507,13 +520,14 @@ class InverseKinematicsController:
         self.max_v = max_v
         self.w_weight = w_weight
         self.joint_controller = None
-        self.kp = kp_scale * np.array([3000.0, 3000.0, 800.0, 800.0, 400.0, 400.0, 400.0])
+        self.kp = kp_scale * np.array(
+            [3000.0, 3000.0, 800.0, 800.0, 400.0, 400.0, 400.0]
+        )
         self.kv = kv_scale * np.array([80.0, 80.0, 40.0, 40.0, 20.0, 20.0, 20.0])
         self.kvv = kvv
 
     def setup(self, s):
         pass
-
 
     def get_control(self, state, tic):
 
@@ -522,11 +536,12 @@ class InverseKinematicsController:
         iMd = self.robot.data.oMf[self.frame_id].actInv(self.oMdes)
         err = pin.log(iMd).vector  # in joint frame
 
-        J = pin.computeFrameJacobian(self.robot.model, self.robot.data, q, self.frame_id)  # in joint frame
+        J = pin.computeFrameJacobian(
+            self.robot.model, self.robot.data, q, self.frame_id
+        )  # in joint frame
         J = -np.dot(pin.Jlog6(iMd.inverse()), J)
         damp = 1e-6
-        v = self.kvv *  -J.T.dot(solve(J.dot(J.T) + damp * np.eye(6), err))
-
+        v = self.kvv * -J.T.dot(solve(J.dot(J.T) + damp * np.eye(6), err))
 
         if np.linalg.norm(v) > self.max_v:
             v /= np.linalg.norm(v)
@@ -536,9 +551,6 @@ class InverseKinematicsController:
         cmd = FlexivCmd(q=q_des, dq=v, kp=self.kp, kv=self.kv)
         return cmd
 
-
-
-
     def applicable(self, state, tic):
         return True
 
@@ -547,16 +559,19 @@ class InverseKinematicsController:
         self.robot.framePlacement(q, self.frame_id, update_kinematics=True)
         iMd = self.robot.data.oMf[self.frame_id].actInv(self.oMdes)
         err = pin.log(iMd).vector  # in joint frame
-        err *= np.array([1., 1., 1., self.w_weight, self.w_weight, self.w_weight])
+        err *= np.array([1.0, 1.0, 1.0, self.w_weight, self.w_weight, self.w_weight])
         print("error is", err)
         return np.linalg.norm(err) < self.goal_error
 
+
 class JointFloatingHistory:
     # TODO: not working yet, maybe remove?
-    def __init__(self, history=100, kv_scale=2., kp_scale=0.2):
+    def __init__(self, history=100, kv_scale=2.0, kp_scale=0.2):
         self.kv_scale = kv_scale
         self.kv = kv_scale * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
-        self.kp = kp_scale * np.array([3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0])
+        self.kp = kp_scale * np.array(
+            [3000.0, 3000.0, 800.0, 800.0, 200.0, 200.0, 200.0]
+        )
         self.history_size = history
         self.q_history = []
 
@@ -572,12 +587,9 @@ class JointFloatingHistory:
 
         # Take the average of the buffer
         self.average_q = np.mean(self.q_history, axis=0)
-        print('average q:', self.average_q)
+        print("average q:", self.average_q)
 
-        return FlexivCmd(
-            q=self.average_q,
-            kp=self.kp,
-            kv=self.kv)
+        return FlexivCmd(q=self.average_q, kp=self.kp, kv=self.kv)
 
     def applicable(self, state, tic):
         """ """
@@ -587,8 +599,9 @@ class JointFloatingHistory:
         """ """
         return False
 
+
 class JointFloating:
-    def __init__(self, kv_scale=1.):
+    def __init__(self, kv_scale=1.0):
         self.kv_scale = kv_scale
         self.kv = kv_scale * np.array([80.0, 80.0, 40.0, 40.0, 8.0, 8.0, 8.0])
 
@@ -605,6 +618,7 @@ class JointFloating:
     def goal_reached(self, state, tic):
         """ """
         return False
+
 
 class Stay:
     def __init__(self):
@@ -624,4 +638,3 @@ class Stay:
     def goal_reached(self, state, tic):
         """ """
         return False
-

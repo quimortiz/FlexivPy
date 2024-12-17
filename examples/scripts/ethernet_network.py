@@ -51,7 +51,7 @@ kv_scale = 2.0
 status = easy_controllers.run_controller(
     robot,
     easy_controllers.GoJointConfiguration(
-        qdes=np.array([.3, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000]),
+        qdes=np.array([0.3, -0.698, 0.000, 1.571, -0.000, 0.698, -0.000]),
         max_v=0.3,
         max_extra_time_rel=0.2,
         kp_scale=kp_scale,
@@ -62,4 +62,3 @@ status = easy_controllers.run_controller(
 )
 
 print("status is:", status)
-

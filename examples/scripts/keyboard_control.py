@@ -15,7 +15,6 @@ from FlexivPy.robot.dds.flexiv_messages import (
 from numpy.linalg import solve
 
 
-
 class KeyboardEndEff:
     def __init__(self, pin_robot, frame_id, approx_dt=0.01, dq_scale=1.0, max_dq=0.2):
 

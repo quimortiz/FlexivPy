@@ -7,7 +7,6 @@ import numpy as np
 import numpy as np
 
 
-
 from FlexivPy.robot.dds.flexiv_messages import EnvImage
 
 from FlexivPy.robot.dds.subscriber import SubscriberNode

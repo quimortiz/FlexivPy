@@ -1,6 +1,6 @@
-
 import pinocchio as pin
 import numpy as np
+
 
 def frame_error(q, robot, frame_id, oMdes):
     data = robot.data
@@ -89,9 +89,7 @@ def polynomial_max_velocity(coefficients):
             t_critical = None
         # Evaluate velocity at the critical point, if it lies in the interval [0, 1]
         if t_critical is not None and 0 <= t_critical <= 1:
-            velocity_at_critical = (
-                3 * a_3 * t_critical**2 + 2 * a_2 * t_critical + a_1
-            )
+            velocity_at_critical = 3 * a_3 * t_critical**2 + 2 * a_2 * t_critical + a_1
             candidates_v = np.append(candidates_v, abs(velocity_at_critical))
             candidates_t = np.append(candidates_t, t_critical)
 
