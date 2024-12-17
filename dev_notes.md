@@ -55,3 +55,8 @@ data_dir  data_t_v0/2024-12-11__16-15-06/data
 17891
 data_dir  data_t_v0/2024-12-11__16-58-56/data
 
+
+
+# new setting. 
+
+data_dir  data_t_v0/2024-12-16__18-44-41/data
