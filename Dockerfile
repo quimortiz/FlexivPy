@@ -34,6 +34,8 @@ RUN apt-get update && apt-get install -y -qq --no-install-recommends \
     libglm-dev \
     wget \
     ninja-build \
+    fzf \
+    libusb-1.0-0-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Miniconda
@@ -55,23 +57,30 @@ ENV CYCLONEDDS_HOME $CONDA_PREFIX
 # Install the dependencies
 
 # pinocchio and crocoddyl
-RUN conda install -y -c conda-forge \
+RUN conda run -n flexivpy conda install -y -c conda-forge \
                         pinocchio \
-                        crocoddyl 
+                        crocoddyl \
+                        cxx-compiler \
+                        cmake \ 
+                        jupyter \
+                        ipykernel \
+                        yaml-cpp \
+                        opencv
 
-RUN conda install -c menpo opencv \
-    && conda clean -afy
+
 
 RUN pip install mujoco \
                 pyyaml \
                 matplotlib \
                 rerun-sdk \
                 opencv-python \
-                opencv-contrib-python
+                opencv-contrib-python \
+                imageio[ffmpeg] \
+                pyrealsense2 \
+                pygame
 
 
-RUN conda install conda-forge::cxx-compiler 
-RUN conda install -c conda-forge cmake
+
 # # CycloneDDS
 WORKDIR /root
 RUN git clone https://github.com/eclipse-cyclonedds/cyclonedds && \
@@ -92,17 +101,20 @@ RUN git clone https://github.com/eclipse-cyclonedds/cyclonedds-cxx &&\
     
 # Flexiv SDK
 WORKDIR /root
-RUN git clone https://github.com/flexivrobotics/flexiv_rdk && cd flexiv_rdk/thirdparty && \ 
+RUN git clone https://github.com/flexivrobotics/flexiv_rdk  \
+    && cd flexiv_rdk && git checkout 7f020e6bf37bd09e534cc5da591183af3ccec4c9 && \
+    cd thirdparty && \ 
     bash build_and_install_dependencies.sh $CONDA_PREFIX && \ 
     cd .. && mkdir build && cd build && \
     cmake .. -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DINSTALL_PYTHON_RDK=OFF && \
     cmake --build . --target install --config Release
 
-# Install the FlexivPy bridge
+
+
+# # Install the FlexivPy bridge
 COPY flexivpy_bridge /root/flexivpy_bridge
 WORKDIR /root/flexivpy_bridge
 # if the source directory on the host system contains a build directory, delete it in the container
-RUN conda install yaml-cpp
 RUN ( [ -d "build" ] && rm -rf "build" ) || true 
 RUN mkdir build && cd build && cmake .. -DCMAKE_PREFIX_PATH=$CONDA_PREFIX \
     && make -j4
@@ -110,12 +122,12 @@ RUN mkdir build && cd build && cmake .. -DCMAKE_PREFIX_PATH=$CONDA_PREFIX \
 RUN echo export "export PATH=$PATH:/root/flexivpy_bridge/build" >> ~/.bashrc
 RUN echo export "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib" >> ~/.bashrc
 
-RUN pip install pyrealsense2 pygame
-RUN apt-get update && apt-get install -y -qq --no-install-recommends libusb-1.0-0-dev
 
-RUN conda install -n flexivpy -c conda-forge jupyter ipykernel
+
+
+# RUN conda install -n flexivpy  
 RUN conda run -n flexivpy python -m ipykernel install --name "flexivpy" --display-name "Python (flexivpy)"
-
+# RUN python -m ipykernel install --name "flexivpy" --display-name "Python (flexivpy)"
 RUN echo "conda activate flexivpy" >> ~/.bashrc
 # Env vars for the nvidia-container-runtime
 ENV NVIDIA_VISIBLE_DEVICES all

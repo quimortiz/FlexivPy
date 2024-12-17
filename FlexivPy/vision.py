@@ -129,6 +129,10 @@ class RealSenseCamera:
         else:
             self.depth_sensor.set_option(rs.option.emitter_enabled, 0)
 
+
+
+        self.color_frame = None
+
         # Start the thread for grabbing frames
         self._stop_event = threading.Event()
         self._thread = threading.Thread(target=self._run_grab_frames)

@@ -57,7 +57,7 @@ class SubscriberNode:
         self.warning_dt = warning_dt
         self.messages_to_keep = messages_to_keep
 
-        self.domain_participant = DomainParticipant()
+        self.domain_participant = DomainParticipant(10)
 
         self.subscribers = []
         self.readers = []
